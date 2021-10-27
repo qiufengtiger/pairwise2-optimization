@@ -1,3 +1,6 @@
+kernel_driver:
+	gcc ./misc/kernel_driver.c -o ./misc/kernel_driver
+
 c: pairwise_c.c
 	gcc ./pairwise_c.c -o pairwise_c
 
@@ -12,3 +15,4 @@ clean:
 	rm -rf __pycache__
 	rm -rf build
 	rm -f ./pairwise_c
+	rm -f ./misc/kernel_driver
