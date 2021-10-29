@@ -584,7 +584,6 @@ def _align(
         )
 
     score_matrix, trace_matrix, best_score = matrices
-
     # print("SCORE %s" % print_matrix(score_matrix))
     # print("TRACEBACK %s" % print_matrix(trace_matrix))
 

@@ -39,48 +39,53 @@ static double calc_affine_penalty(int length, double open, double extend,
     return penalty;
 }
 
-static double _get_match_score(PyObject *py_sequenceA, PyObject *py_sequenceB,
-                               PyObject *py_match_fn, int i, int j,
-                               char *sequenceA, char *sequenceB,
-                               int use_sequence_cstring,
-                               double match, double mismatch,
-                               int use_match_mismatch_scores)
+static int max(int a, int b, int c)
 {
-    PyObject *py_A=NULL, *py_B=NULL;
-    PyObject *py_arglist=NULL, *py_result=NULL;
-    double score = 0;
-
-    if(use_sequence_cstring && use_match_mismatch_scores) {
-        score = (sequenceA[i] == sequenceB[j]) ? match : mismatch;
-        return score;
-    }
-    /* Calculate the match score. */
-    if(!(py_A = PySequence_GetItem(py_sequenceA, i)))
-        goto _get_match_score_cleanup;
-    if(!(py_B = PySequence_GetItem(py_sequenceB, j)))
-        goto _get_match_score_cleanup;
-    if(!(py_arglist = Py_BuildValue("(OO)", py_A, py_B)))
-        goto _get_match_score_cleanup;
-
-    if(!(py_result = PyEval_CallObject(py_match_fn, py_arglist)))
-        goto _get_match_score_cleanup;
-    score = PyFloat_AsDouble(py_result);
-
- _get_match_score_cleanup:
-    if(py_A) {
-        Py_DECREF(py_A);
-    }
-    if(py_B) {
-        Py_DECREF(py_B);
-    }
-    if(py_arglist) {
-        Py_DECREF(py_arglist);
-    }
-    if(py_result) {
-        Py_DECREF(py_result);
-    }
-    return score;
+    return a > b ? (a > c ? a : c) : (b > c ? b : c);
 }
+
+// static double _get_match_score(PyObject *py_sequenceA, PyObject *py_sequenceB,
+//                                PyObject *py_match_fn, int i, int j,
+//                                char *sequenceA, char *sequenceB,
+//                                int use_sequence_cstring,
+//                                double match, double mismatch,
+//                                int use_match_mismatch_scores)
+// {
+//     PyObject *py_A=NULL, *py_B=NULL;
+//     PyObject *py_arglist=NULL, *py_result=NULL;
+//     double score = 0;
+
+//     if(use_sequence_cstring && use_match_mismatch_scores) {
+//         score = (sequenceA[i] == sequenceB[j]) ? match : mismatch;
+//         return score;
+//     }
+//     /* Calculate the match score. */
+//     if(!(py_A = PySequence_GetItem(py_sequenceA, i)))
+//         goto _get_match_score_cleanup;
+//     if(!(py_B = PySequence_GetItem(py_sequenceB, j)))
+//         goto _get_match_score_cleanup;
+//     if(!(py_arglist = Py_BuildValue("(OO)", py_A, py_B)))
+//         goto _get_match_score_cleanup;
+
+//     if(!(py_result = PyEval_CallObject(py_match_fn, py_arglist)))
+//         goto _get_match_score_cleanup;
+//     score = PyFloat_AsDouble(py_result);
+
+//  _get_match_score_cleanup:
+//     if(py_A) {
+//         Py_DECREF(py_A);
+//     }
+//     if(py_B) {
+//         Py_DECREF(py_B);
+//     }
+//     if(py_arglist) {
+//         Py_DECREF(py_arglist);
+//     }
+//     if(py_result) {
+//         Py_DECREF(py_result);
+//     }
+//     return score;
+// }
 
 #if PY_MAJOR_VERSION >= 3
 static PyObject* _create_bytes_object(PyObject* o)
@@ -136,6 +141,8 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
     // double *col_cache_score = NULL;
     PyObject *py_retval = NULL;
 
+    // parameter used:
+    // align_globally = 1
     struct matrix_data calculate_score(int row, int col) {
         struct matrix_data result;
 
@@ -149,31 +156,35 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
                                                          penalize_extend_when_opening);
         col_cache_score = calc_affine_penalty(col, (2*open_B), extend_B,
                          penalize_extend_when_opening);
-        match_score = _get_match_score(py_sequenceA, py_sequenceB,
-                                               py_match_fn, row-1, col-1,
-                                               sequenceA, sequenceB,
-                                               use_sequence_cstring,
-                                               match, mismatch,
-                                               use_match_mismatch_scores);
+
+
+        // match_score = _get_match_score(py_sequenceA, py_sequenceB,
+        //                                        py_match_fn, row-1, col-1,
+        //                                        sequenceA, sequenceB,
+        //                                        use_sequence_cstring,
+        //                                        match, mismatch,
+        //                                        use_match_mismatch_scores);
+        match_score = (sequenceA[row - 1] == sequenceB[col - 1]) ? match : mismatch;
+
         nogap_score = score_matrix[(row-1)*(lenB+1)+col-1] + match_score;
-        if (!penalize_end_gaps_A && row==lenA) {
-            row_open = score_matrix[(row)*(lenB+1)+col-1];
-            row_extend = row_cache_score;
-        }
-        else {
-            row_open = score_matrix[(row)*(lenB+1)+col-1] + first_A_gap;
-            row_extend = row_cache_score + extend_A;
-        }
+        // if (!penalize_end_gaps_A && row==lenA) {
+        //     row_open = score_matrix[(row)*(lenB+1)+col-1];
+        //     row_extend = row_cache_score;
+        // }
+        // else {
+        row_open = score_matrix[(row)*(lenB+1)+col-1] + first_A_gap;
+        row_extend = row_cache_score + extend_A;
+        // }
         row_cache_score = (row_open > row_extend) ? row_open : row_extend;
 
-        if (!penalize_end_gaps_B && col==lenB){
-            col_open = score_matrix[(row-1)*(lenB+1)+col];
-            col_extend = col_cache_score;
-        }
-        else {
-            col_open = score_matrix[(row-1)*(lenB+1)+col] + first_B_gap;
-            col_extend = col_cache_score + extend_B;
-        }
+        // if (!penalize_end_gaps_B && col==lenB){
+        //     col_open = score_matrix[(row-1)*(lenB+1)+col];
+        //     col_extend = col_cache_score;
+        // }
+        // else {
+        col_open = score_matrix[(row-1)*(lenB+1)+col] + first_B_gap;
+        col_extend = col_cache_score + extend_B;
+        // }
         col_cache_score = (col_open > col_extend) ? col_open : col_extend;
         best_score = (row_cache_score > col_cache_score) ? row_cache_score : col_cache_score;
         if(nogap_score > best_score)
@@ -186,6 +197,8 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
             result.score = 0;
         else
             result.score = best_score;
+
+        result.score = (best_score > 0) ? best_score : 0;
 
         if (!score_only) {
             row_score_rint = rint(row_cache_score);
@@ -339,35 +352,37 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
 
     // SIMD kernel implementation
 
-    for (col = 1; col <= lenB; col ++) {
-        for (row = 1; row <= lenA; row ++) {
-            struct matrix_data result = calculate_score(row, col);
-            score_matrix[row*(lenB+1)+col] = result.score;
-            if (!score_only)
-                trace_matrix[row*(lenB+1)+col] = result.trace;
-        }
-    }
-
-    // int size = 4;
-    // int k = 0;
-    // for (col = 1; col <= lenB; col += size) {
-    //     row = 1;
-    //     for (; row < size; row ++) {
-    //         for (k = col; k - col < size - row; k++) {
-
-    //         }
-    //     }
-    //     for (; row < lenA; row ++) {
-
-    //     }
-    //     for (row = 1; row < size; row ++) {
-    //         for (k = col + size - row; k - col < size; k ++) { 
-    //         }
+    // for (col = 1; col <= lenB; col ++) {
+    //     for (row = 1; row <= lenA; row ++) {
+    //         struct matrix_data result = calculate_score(row, col);
+    //         score_matrix[row*(lenB+1)+col] = result.score;
+    //         if (!score_only)
+    //             trace_matrix[row*(lenB+1)+col] = result.trace;
     //     }
     // }
+    for (col = 1; col <= lenB; col ++) {
+        for (row = 1; row <= lenA; row ++) {
+            // 1
+            // CMP, AND = 4
+            double matchScore = sequenceA[row - 1] == sequenceB[col - 1] ? match : mismatch;
+            // ADD = 3
+            double score1 = score_matrix[(row - 1) * (lenB + 1) + col - 1] + matchScore;
 
-    if (!align_globally)
-        best_score = local_max_score;
+            double score2 = score_matrix[(row - 1) * (lenB+1) + col];
+
+            double score3 = score_matrix[row * (lenB + 1) + col - 1];
+            // MAX * 2 = 6
+            double best_score = max(score1, score2, score3);
+            score_matrix[row*(lenB+1)+col] = best_score;
+
+            if (best_score > local_max_score)
+                local_max_score = best_score;
+        }
+    }
+    best_score = local_max_score;
+
+    // if (!align_globally)
+    //     best_score = local_max_score;
 
     /* Save the score and traceback matrices into real python objects. */
 	if(!score_only) {

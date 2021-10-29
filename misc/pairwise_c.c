@@ -8,7 +8,7 @@
 double first_A_gap, first_B_gap;
 double match = 1; 
 double mismatch = 0;
-double score;
+double score;ø
 double best_score = 0;
 double local_max_score = 0;
 double open_A = 0;

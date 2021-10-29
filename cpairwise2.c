@@ -335,10 +335,8 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
             }
         }
     }
-
     if (!align_globally)
         best_score = local_max_score;
-
     /* Save the score and traceback matrices into real python objects. */
 	if(!score_only) {
 		if(!(py_score_matrix = PyList_New(lenA+1)))
