@@ -136,7 +136,7 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
     // double *col_cache_score = NULL;
     PyObject *py_retval = NULL;
 
-    struct matrix_data calculate_score(int rol, int col) {
+    struct matrix_data calculate_score(int row, int col) {
         struct matrix_data result;
 
         double row_cache_score, col_cache_score;
