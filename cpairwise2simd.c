@@ -363,15 +363,15 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
     for (col = 1; col <= lenB; col ++) {
         for (row = 1; row <= lenA; row ++) {
             // 1
-            // CMP, AND = 4
+            // CMP = 3 -> p1, AND -> p5
             double matchScore = sequenceA[row - 1] == sequenceB[col - 1] ? match : mismatch;
-            // ADD = 3
+            // ADD = 3 -> p1
             double score1 = score_matrix[(row - 1) * (lenB + 1) + col - 1] + matchScore;
 
             double score2 = score_matrix[(row - 1) * (lenB+1) + col];
 
             double score3 = score_matrix[row * (lenB + 1) + col - 1];
-            // MAX * 2 = 6
+            // MAX * 2 = 6 -> p1
             double best_score = max(score1, score2, score3);
             score_matrix[row*(lenB+1)+col] = best_score;
 
