@@ -44,7 +44,6 @@ static double _get_match_score(PyObject *py_sequenceA, PyObject *py_sequenceB,
     PyObject *py_A=NULL, *py_B=NULL;
     PyObject *py_arglist=NULL, *py_result=NULL;
     double score = 0;
-
     if(use_sequence_cstring && use_match_mismatch_scores) {
         score = (sequenceA[i] == sequenceB[j]) ? match : mismatch;
         return score;
@@ -114,7 +113,6 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
     double open_A, extend_A, open_B, extend_B;
     int penalize_extend_when_opening, penalize_end_gaps_A, penalize_end_gaps_B;
     int align_globally, score_only;
-
     PyObject *py_match=NULL, *py_mismatch=NULL;
     double first_A_gap, first_B_gap;
     double match, mismatch;
@@ -127,7 +125,7 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
     unsigned char *trace_matrix = NULL;
     PyObject *py_score_matrix=NULL, *py_trace_matrix=NULL;
 
-    double *col_cache_score = NULL;
+    // double col_cache_score;
     PyObject *py_retval = NULL;
 
     if(!PyArg_ParseTuple(args, "OOOddddi(ii)ii", &py_sequenceA, &py_sequenceB,
@@ -141,7 +139,6 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
                         "py_sequenceA and py_sequenceB should be sequences.");
         return NULL;
     }
-
     /* Optimize for the common case. Check to see if py_sequenceA and
        py_sequenceB are strings.  If they are, use the c string
        representation. */
@@ -249,18 +246,21 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
     }
 
     /* Now initialize the col cache. */
-    col_cache_score = malloc((lenB+1)*sizeof(*col_cache_score));
-    memset((void *)col_cache_score, 0, (lenB+1)*sizeof(*col_cache_score));
-    for(i=0; i<=lenB; i++) {
-        col_cache_score[i] = calc_affine_penalty(i, (2*open_B), extend_B,
-                             penalize_extend_when_opening);
-    }
+    // col_cache_score = malloc((lenB+1)*sizeof(*col_cache_score));
+    // memset((void *)col_cache_score, 0, (lenB+1)*sizeof(*col_cache_score));
+    // for(i=0; i<=lenB; i++) {
+    //     col_cache_score[i] = calc_affine_penalty(i, (2*open_B), extend_B,
+    //                          penalize_extend_when_opening);
+    // }
 
     /* Fill in the score matrix. The row cache is calculated on the fly.*/
     for(row=1; row<=lenA; row++) {
-        double row_cache_score = calc_affine_penalty(row, (2*open_A), extend_A,
-                                 penalize_extend_when_opening);
+        
         for(col=1; col<=lenB; col++) {
+            double row_cache_score = calc_affine_penalty(row, (2*open_A), extend_A,
+                                 penalize_extend_when_opening);
+            double col_cache_score = calc_affine_penalty(col, (2*open_B), extend_B,
+                             penalize_extend_when_opening);
             double match_score, nogap_score;
             double row_open, row_extend, col_open, col_extend;
             int best_score_rint, row_score_rint, col_score_rint;
@@ -276,7 +276,6 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
             if(match_score==-1.0 && PyErr_Occurred())
                 goto _cleanup_make_score_matrix_fast;
             nogap_score = score_matrix[(row-1)*(lenB+1)+col-1] + match_score;
-
             if (!penalize_end_gaps_A && row==lenA) {
                 row_open = score_matrix[(row)*(lenB+1)+col-1];
                 row_extend = row_cache_score;
@@ -289,15 +288,15 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
 
             if (!penalize_end_gaps_B && col==lenB){
                 col_open = score_matrix[(row-1)*(lenB+1)+col];
-                col_extend = col_cache_score[col];
+                col_extend = col_cache_score;
             }
             else {
                 col_open = score_matrix[(row-1)*(lenB+1)+col] + first_B_gap;
-                col_extend = col_cache_score[col] + extend_B;
+                col_extend = col_cache_score + extend_B;
             }
-            col_cache_score[col] = (col_open > col_extend) ? col_open : col_extend;
+            col_cache_score = (col_open > col_extend) ? col_open : col_extend;
 
-            best_score = (row_cache_score > col_cache_score[col]) ? row_cache_score : col_cache_score[col];
+            best_score = (row_cache_score > col_cache_score) ? row_cache_score : col_cache_score;
             if(nogap_score > best_score)
                 best_score = nogap_score;
 
@@ -311,7 +310,7 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
 
             if (!score_only) {
                 row_score_rint = rint(row_cache_score);
-                col_score_rint = rint(col_cache_score[col]);
+                col_score_rint = rint(col_cache_score);
                 row_trace_score = 0;
                 col_trace_score = 0;
                 if (rint(row_open) == row_score_rint)
@@ -335,6 +334,15 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
             }
         }
     }
+
+    for (col=0; col <= lenB; col ++) {
+        for (row = 0; row <= lenA; row ++) {
+            printf("%d ", (int)score_matrix[row * (lenB + 1) + col]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+
     if (!align_globally)
         best_score = local_max_score;
     /* Save the score and traceback matrices into real python objects. */
@@ -391,8 +399,8 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
         free(score_matrix);
     if(trace_matrix)
         free(trace_matrix);
-    if(col_cache_score)
-        free(col_cache_score);
+    // if(col_cache_score)
+    //     free(col_cache_score);
     if(py_score_matrix){
         Py_DECREF(py_score_matrix);
     }

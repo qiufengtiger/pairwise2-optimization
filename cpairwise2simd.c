@@ -39,9 +39,14 @@ static double calc_affine_penalty(int length, double open, double extend,
     return penalty;
 }
 
-static int max(int a, int b, int c)
+static double max3(double a, double b, double c)
 {
     return a > b ? (a > c ? a : c) : (b > c ? b : c);
+}
+
+static double max2(double a, double b)
+{
+    return a > b ? a : b;
 }
 
 // static double _get_match_score(PyObject *py_sequenceA, PyObject *py_sequenceB,
@@ -360,27 +365,37 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
     //             trace_matrix[row*(lenB+1)+col] = result.trace;
     //     }
     // }
+    int gap = -1;
     for (col = 1; col <= lenB; col ++) {
         for (row = 1; row <= lenA; row ++) {
             // 1
-            // CMP = 3 -> p1, AND -> p5
+            // CMP = 3 -> p1, AND-> p5
             double matchScore = sequenceA[row - 1] == sequenceB[col - 1] ? match : mismatch;
             // ADD = 3 -> p1
             double score1 = score_matrix[(row - 1) * (lenB + 1) + col - 1] + matchScore;
 
-            double score2 = score_matrix[(row - 1) * (lenB+1) + col];
+            double score2 = score_matrix[(row - 1) * (lenB+1) + col] + gap;
+            // score2 = max2(score2, 2*gap);
 
-            double score3 = score_matrix[row * (lenB + 1) + col - 1];
+            double score3 = score_matrix[row * (lenB + 1) + col - 1] + gap;
+            // score3 = max2(score3, 2*gap);
             // MAX * 2 = 6 -> p1
-            double best_score = max(score1, score2, score3);
+            best_score = max3(score1, score2, score3);
             score_matrix[row*(lenB+1)+col] = best_score;
 
-            if (best_score > local_max_score)
-                local_max_score = best_score;
+            // if (this_score > local_max_score)
+            //     local_max_score = this_score;
         }
     }
-    best_score = local_max_score;
+    // best_score = local_max_score;
 
+    for (col=0; col <= lenB; col ++) {
+        for (row = 0; row <= lenA; row ++) {
+            printf("%d ", (int)score_matrix[row * (lenB + 1) + col]);
+        }
+        printf("\n");
+    }
+    printf("\n");
     // if (!align_globally)
     //     best_score = local_max_score;
 
