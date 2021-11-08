@@ -258,6 +258,7 @@ int main()
 
 	unsigned long long t0, t1;
 
+	int iteration = 100;
 	int m = 33; //m is the number of rows of C
 	int n = 33; //n is the number of columns of C
 	char str1[] = "GATTACATGATTACATGATTACATGATTACAT";
@@ -293,36 +294,59 @@ int main()
 		matrix_check[i] = 0;
 	}
 
+	
+
+	/************************************* Naive **************************************************/
+	int correct = 1;
+	long total_time = 0;
 	initMatrix(m, n, matrix_check);
 
-	t0 = rdtsc();
-	naive(m, n, a, b, matrix_check);
-	t1 = rdtsc();
+	for (int i = 0; i < iteration; i++) {
+		t0 = rdtsc();
+		naive(m, n, a, b, matrix_check);
+		t1 = rdtsc();
+		total_time += (t1 - t0);
+	}
+	
 
 	printf("Naive Result:\n");
 	// printMatrix(m, n, matrix_check);
-	printf("Config:\nm = %d,\t n = %d,\t time = %lf\n", m, n, ((double)(t1 - t0)));
+	printf("Config:\nm = %d,\t n = %d,\t time = %lf\n", m, n, ((double)(total_time) / iteration));
 
-	int correct = 1;
+	
 	/************************************* Kernel **************************************************/
-	// initMatrix(m, n, matrix);
-	// t0 = rdtsc();
-	// kernel(m, n, a, b, matrix);
-	// t1 = rdtsc();
-	// printf("Kernel Result:\n");
-	// // printMatrix(m, n, matrix);
-	// correct = 1;
-	// for (int i = 0; i < (m) * (n); i++)
-	// {
-	// 	correct &= (matrix[i] == matrix_check[i]);
-	// }
-	// printf("Config:\nm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(t1 - t0)), correct);
+	correct = 1;
+	total_time = 0;
+	
+	initMatrix(m, n, matrix);
+	for (int i = 0; i < iteration; i++) {
+		t0 = rdtsc();
+		kernel(m, n, a, b, matrix);
+		t1 = rdtsc();
+		total_time += (t1 - t0);
+	}
+	
+	printf("Kernel Result:\n");
+	// printMatrix(m, n, matrix);
+	
+	for (int i = 0; i < (m) * (n); i++)
+	{
+		correct &= (matrix[i] == matrix_check[i]);
+	}
+	printf("Config:\nm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
 
 	/************************************* SIMD Kernel 4 **************************************************/
+	correct = 1;
+	total_time = 0;
+
 	initMatrix(m, n, matrix);
-	t0 = rdtsc();
-	SIMDkernel4(m, n, a, b, matrix);
-	t1 = rdtsc();
+	for (int i = 0; i < iteration; i++) {
+		t0 = rdtsc();
+		SIMDkernel4(m, n, a, b, matrix);
+		t1 = rdtsc();
+		total_time += (t1 - t0);
+	}
+
 	printf("SIMD Kernel-4 Result:\n");
 	// printMatrix(m, n, matrix);
 	correct = 1;
@@ -330,7 +354,8 @@ int main()
 	{
 		correct &= (matrix[i] == matrix_check[i]);
 	}
-	printf("Config:\nm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(t1 - t0)), correct);
+	printf("Config:\nm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
+	/***********************************************************************************************/
 
 	free(a);
 	free(b);
