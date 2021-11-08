@@ -82,8 +82,8 @@ void SIMDkernel4(
 	__m256d GAP_SCORE = _mm256_load_pd(gap_point);
 	double result[4] = {0, 0, 0, 0};
 
-	__m256d seq_A, seq_B, is_match, match_score, mismatch_score, top_left, score1, left, best_score, top;
-
+	// __m256d seq_A, seq_B, is_match, match_score, mismatch_score, top_left, score1, left, best_score, top;
+	__m256d r1, r2;
 	for (int i = 1; i < m; i += size)
 	{
 		int j = 1;
@@ -102,21 +102,35 @@ void SIMDkernel4(
 			int row3 = j - 2, col3 = i + 2;
 			int row4 = j - 3, col4 = i + 3;
 
-			seq_A = _mm256_set_pd(a[row1 - 1], a[row2 - 1], a[row3 - 1], a[row4 - 1]);
-			seq_B = _mm256_set_pd(b[col1 - 1], b[col2 - 1], b[col3 - 1], b[col4 - 1]);
-			is_match = _mm256_cmp_pd(seq_A, seq_B, _CMP_EQ_OQ);	
-			match_score = _mm256_and_pd(is_match, MATCH_SCORE);
-			mismatch_score = _mm256_andnot_pd(is_match, MISMATCH_SCORE);
-			match_score = _mm256_or_pd(match_score, mismatch_score);
-			top_left = _mm256_set_pd(matrix[(row1 - 1) * n + col1 - 1], matrix[(row2 - 1) * n + col2 - 1], matrix[(row3 - 1) * n + col3 - 1], matrix[(row4 - 1) * n + col4 - 1]);
-			score1 = _mm256_add_pd(top_left, match_score);
-			left = _mm256_set_pd(matrix[(row1 - 1) * n + col1], matrix[(row2 - 1) * n + col2], matrix[(row3 - 1) * n + col3], matrix[(row4 - 1) * n + col4]);
-			best_score = _mm256_max_pd(score1, left);
-			top = _mm256_set_pd(matrix[row1 * n + col1 - 1], matrix[row2 * n + col2 - 1], matrix[row3 * n + col3 - 1], matrix[row4 * n + col4 - 1]);
-			best_score = _mm256_max_pd(best_score, top);
-			best_score = _mm256_add_pd(best_score, GAP_SCORE);
+			// seq_A = _mm256_set_pd(a[row1 - 1], a[row2 - 1], a[row3 - 1], a[row4 - 1]);
+			// seq_B = _mm256_set_pd(b[col1 - 1], b[col2 - 1], b[col3 - 1], b[col4 - 1]);
+			// is_match = _mm256_cmp_pd(seq_A, seq_B, _CMP_EQ_OQ);	
+			// match_score = _mm256_and_pd(is_match, MATCH_SCORE);
+			// mismatch_score = _mm256_andnot_pd(is_match, MISMATCH_SCORE);
+			// match_score = _mm256_or_pd(match_score, mismatch_score);
+			// top_left = _mm256_set_pd(matrix[(row1 - 1) * n + col1 - 1], matrix[(row2 - 1) * n + col2 - 1], matrix[(row3 - 1) * n + col3 - 1], matrix[(row4 - 1) * n + col4 - 1]);
+			// score1 = _mm256_add_pd(top_left, match_score);
+			// left = _mm256_set_pd(matrix[(row1 - 1) * n + col1], matrix[(row2 - 1) * n + col2], matrix[(row3 - 1) * n + col3], matrix[(row4 - 1) * n + col4]);
+			// best_score = _mm256_max_pd(score1, left);
+			// top = _mm256_set_pd(matrix[row1 * n + col1 - 1], matrix[row2 * n + col2 - 1], matrix[row3 * n + col3 - 1], matrix[row4 * n + col4 - 1]);
+			// best_score = _mm256_max_pd(best_score, top);
+			// best_score = _mm256_add_pd(best_score, GAP_SCORE);
 
-			_mm256_store_pd(result, best_score);
+			r1 = _mm256_set_pd(a[row1 - 1], a[row2 - 1], a[row3 - 1], a[row4 - 1]);
+			r2 = _mm256_set_pd(b[col1 - 1], b[col2 - 1], b[col3 - 1], b[col4 - 1]);
+			r1 = _mm256_cmp_pd(r1, r2, _CMP_EQ_OQ);	
+			r2 = _mm256_and_pd(r1, MATCH_SCORE);
+			r1 = _mm256_andnot_pd(r1, MISMATCH_SCORE);
+			r1 = _mm256_or_pd(r1, r2);
+			r2 = _mm256_set_pd(matrix[(row1 - 1) * n + col1 - 1], matrix[(row2 - 1) * n + col2 - 1], matrix[(row3 - 1) * n + col3 - 1], matrix[(row4 - 1) * n + col4 - 1]);
+			r1 = _mm256_add_pd(r1, r2);
+			r2 = _mm256_set_pd(matrix[(row1 - 1) * n + col1], matrix[(row2 - 1) * n + col2], matrix[(row3 - 1) * n + col3], matrix[(row4 - 1) * n + col4]);
+			r1 = _mm256_max_pd(r1, r2);
+			r2 = _mm256_set_pd(matrix[row1 * n + col1 - 1], matrix[row2 * n + col2 - 1], matrix[row3 * n + col3 - 1], matrix[row4 * n + col4 - 1]);
+			r1 = _mm256_max_pd(r1, r2);
+			r1 = _mm256_add_pd(r1, GAP_SCORE);
+
+			_mm256_store_pd(result, r1);
 
 			matrix[row1 * n + col1] = result[3];
 			matrix[row2 * n + col2] = result[2];
@@ -689,10 +703,10 @@ int main()
 	unsigned long long t0, t1;
 
 	int iteration = 100;
-	int m = 257; //m is the number of rows of C
-	int n = 257; //n is the number of columns of C
-	char str1[] = "GATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACAT";
-	char str2[] = "GCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACAT";
+	int m = 513; //m is the number of rows of C
+	int n = 513; //n is the number of columns of C
+	char str1[] = "GATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACAT";
+	char str2[] = "GCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACAT";
 
 	/*
 		Assume the following
