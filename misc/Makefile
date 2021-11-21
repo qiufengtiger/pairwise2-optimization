@@ -3,4 +3,4 @@ all:
 	./kernel.x
 	
 clean:
-	rm -rf *.x *~
+	rm -rf *.x *.o *~

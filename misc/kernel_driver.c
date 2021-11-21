@@ -27,24 +27,26 @@ void kernel(
 	double *restrict a,
 	double *restrict b,
 	double *restrict matrix) {
+
+	int i = 0;
+	int j = 0;
+	int k = 0;
 	int size = 4;
-	for (int i = 1; i < m; i += size)
-	{
-		int j = 1;
-		for (; j < size; j++)
-		{
-			for (int k = i; k - i < size - j; k++)
-			{
-				double matchScore = a[j - 1] == b[k - 1] ? MATCH : MISMATCH;
-				matrix[j * n + k] = max(matrix[(j - 1) * n + k - 1] + matchScore, matrix[(j - 1) * n + k] + GAP, matrix[j * n + k - 1] + GAP);
+
+	for (j = 1; j < n; j += size) {
+		i = 1;
+		for (; i < size; i++) {
+			// k is in n dimension in prologue
+			for (k = j; k < j + size - i + 1; k++) {
+				double matchScore = a[i - 1] == b[k - 1] ? MATCH : MISMATCH;
+				matrix[i * n + k] = max(matrix[(i - 1) * n + k - 1] + matchScore, matrix[(i - 1) * n + k] + GAP, matrix[i * n + k - 1] + GAP);
 			}
 		}
-		for (; j < m; j++)
-		{
-			int row1 = j, col1 = i;
-			int row2 = j - 1, col2 = i + 1;
-			int row3 = j - 2, col3 = i + 2;
-			int row4 = j - 3, col4 = i + 3;
+		for (; i < m; i++) {
+			int row1 = i, col1 = j;
+			int row2 = i - 1, col2 = j + 1;
+			int row3 = i - 2, col3 = j + 2;
+			int row4 = i - 3, col4 = j + 3;
 			double s1 = a[row1 - 1] == b[col1 - 1] ? MATCH : MISMATCH;
 			double s2 = a[row2 - 1] == b[col2 - 1] ? MATCH : MISMATCH;
 			double s3 = a[row3 - 1] == b[col3 - 1] ? MATCH : MISMATCH;
@@ -55,16 +57,100 @@ void kernel(
 			matrix[row3 * n + col3] = max(matrix[(row3 - 1) * n + col3 - 1] + s3, matrix[(row3 - 1) * n + col3] + GAP, matrix[row3 * n + col3 - 1] + GAP);
 			matrix[row4 * n + col4] = max(matrix[(row4 - 1) * n + col4 - 1] + s4, matrix[(row4 - 1) * n + col4] + GAP, matrix[row4 * n + col4 - 1] + GAP);
 		}
-		for (j = 1; j < size; j++) {
-			for (int k = i + size - j; k -i < size; k++) {
-				int row = m - size + j, col = k;
-				double matchScore = a[row - 1] == b[col - 1] ? MATCH : MISMATCH;
-				matrix[row * n + col] = max(matrix[(row - 1) * n + col - 1] + matchScore, matrix[(row - 1) * n + col] + GAP, matrix[row * n + col - 1] + GAP);
+		i = m - size + 1;
+		for (; i < m; i++) {
+			for (k = j + m - i; k < j + size; k++) {
+				// int row = m - size + j, col = k;
+				double matchScore = a[i - 1] == b[k - 1] ? MATCH : MISMATCH;
+				matrix[i * n + k] = max(matrix[(i - 1) * n + k - 1] + matchScore, matrix[(i - 1) * n + k] + GAP, matrix[i * n + k - 1] + GAP);
 			}
 		}
 	}
 }
 
+void SIMDkernel4packed(
+	int m,
+	int n,
+	double *restrict a,
+	double *restrict b,
+	double *restrict packed) {
+
+	// double match_point[4] = {MATCH - GAP, MATCH - GAP, MATCH - GAP, MATCH - GAP};
+	// double mismatch_point[4] = {MISMATCH - GAP, MISMATCH - GAP, MISMATCH - GAP, MISMATCH - GAP};
+	// double gap_point[4] = {GAP, GAP, GAP, GAP};
+
+	int i = 0;
+	int j = 0;
+	int k = 0;
+	int size = 4;
+
+	for (j = 1; j < n; j += size) {
+		i = j + 1;
+		for (; i < j + size; i++) {
+			for (k = j; k < i; k ++) {
+				int old_i = i - k; // old i at original matrix
+				int old_k = k; // old k
+				double match_score = (a[old_i - 1] == b[old_k - 1]) ? MATCH : MISMATCH;
+				packed[i * n + k] = max(
+					packed[(i - 2) * n + k - 1] + match_score,
+					packed[(i - 1) * n + k - 1] + GAP,
+					packed[(i - 1) * n + k] + GAP);
+			}
+		}
+		for (; i < j + 1 + m - 1; i ++) {
+			// reindex: match_score start at s0 now
+			int old_i_0 = i - j;
+			int old_j_0 = j;
+			double s0 = (a[old_i_0 - 1 - 0] == b[old_j_0 - 1 + 0]) ? MATCH : MISMATCH;
+			double s1 = (a[old_i_0 - 1 - 1] == b[old_j_0 - 1 + 1]) ? MATCH : MISMATCH;
+			double s2 = (a[old_i_0 - 1 - 2] == b[old_j_0 - 1 + 2]) ? MATCH : MISMATCH;
+			double s3 = (a[old_i_0 - 1 - 3] == b[old_j_0 - 1 + 3]) ? MATCH : MISMATCH;
+
+			packed[i * n + (j + 0)] = max(
+				packed[(i - 2) * n + (j + 0) - 1] + s0,
+				packed[(i - 1) * n + (j + 0) - 1] + GAP,
+				packed[(i - 1) * n + (j + 0)] + GAP);
+			packed[i * n + (j + 1)] = max(
+				packed[(i - 2) * n + (j + 1) - 1] + s1,
+				packed[(i - 1) * n + (j + 1) - 1] + GAP,
+				packed[(i - 1) * n + (j + 1)] + GAP);
+			packed[i * n + (j + 2)] = max(
+				packed[(i - 2) * n + (j + 2) - 1] + s2,
+				packed[(i - 1) * n + (j + 2) - 1] + GAP,
+				packed[(i - 1) * n + (j + 2)] + GAP);
+			packed[i * n + (j + 3)] = max(
+				packed[(i - 2) * n + (j + 3) - 1] + s3,
+				packed[(i - 1) * n + (j + 3) - 1] + GAP,
+				packed[(i - 1) * n + (j + 3)] + GAP);
+		}
+		i = j + 1 + m - 1;
+		for (; i < j + 1 + m - 1 + size - 1; i ++) {
+			for (k = j + 1 + i - (j + 1 + m - 1); k < j + size; k ++) {
+				int old_i = i - k;
+				int old_k = k;
+				double match_score = (a[old_i - 1] == b[old_k - 1]) ? MATCH : MISMATCH;
+				packed[i * n + k] = max(
+					packed[(i - 2) * n + k - 1] + match_score,
+					packed[(i - 1) * n + k - 1] + GAP,
+					packed[(i - 1) * n + k] + GAP);
+			}
+		}
+	}
+
+
+	
+}
+
+void repack(int m, int n, double *restrict packed, double *restrict matrix) {
+	int i = 0;
+	int j = 0;
+	for (i = 0; i < m; i ++) {
+		for (j = 0; j < n; j ++) {
+			int packed_i = i + j;
+			matrix[i * n + j] = packed[packed_i * n + j];
+		} 
+	}
+}
 
 void SIMDkernel4(
 	int m,
@@ -82,8 +168,8 @@ void SIMDkernel4(
 	__m256d GAP_SCORE = _mm256_load_pd(gap_point);
 	double result[4] = {0, 0, 0, 0};
 
-	// __m256d seq_A, seq_B, is_match, match_score, mismatch_score, top_left, score1, left, best_score, top;
-	__m256d r1, r2;
+	__m256d seq_A, seq_B, is_match, match_score, mismatch_score, top_left, score1, left, best_score, top;
+	// __m256d r1, r2;
 	for (int i = 1; i < m; i += size)
 	{
 		int j = 1;
@@ -102,35 +188,36 @@ void SIMDkernel4(
 			int row3 = j - 2, col3 = i + 2;
 			int row4 = j - 3, col4 = i + 3;
 
-			// seq_A = _mm256_set_pd(a[row1 - 1], a[row2 - 1], a[row3 - 1], a[row4 - 1]);
-			// seq_B = _mm256_set_pd(b[col1 - 1], b[col2 - 1], b[col3 - 1], b[col4 - 1]);
-			// is_match = _mm256_cmp_pd(seq_A, seq_B, _CMP_EQ_OQ);	
-			// match_score = _mm256_and_pd(is_match, MATCH_SCORE);
-			// mismatch_score = _mm256_andnot_pd(is_match, MISMATCH_SCORE);
-			// match_score = _mm256_or_pd(match_score, mismatch_score);
-			// top_left = _mm256_set_pd(matrix[(row1 - 1) * n + col1 - 1], matrix[(row2 - 1) * n + col2 - 1], matrix[(row3 - 1) * n + col3 - 1], matrix[(row4 - 1) * n + col4 - 1]);
-			// score1 = _mm256_add_pd(top_left, match_score);
-			// left = _mm256_set_pd(matrix[(row1 - 1) * n + col1], matrix[(row2 - 1) * n + col2], matrix[(row3 - 1) * n + col3], matrix[(row4 - 1) * n + col4]);
-			// best_score = _mm256_max_pd(score1, left);
-			// top = _mm256_set_pd(matrix[row1 * n + col1 - 1], matrix[row2 * n + col2 - 1], matrix[row3 * n + col3 - 1], matrix[row4 * n + col4 - 1]);
-			// best_score = _mm256_max_pd(best_score, top);
-			// best_score = _mm256_add_pd(best_score, GAP_SCORE);
+			seq_A = _mm256_set_pd(a[row1 - 1], a[row2 - 1], a[row3 - 1], a[row4 - 1]);
+			seq_B = _mm256_set_pd(b[col1 - 1], b[col2 - 1], b[col3 - 1], b[col4 - 1]);
+			is_match = _mm256_cmp_pd(seq_A, seq_B, _CMP_EQ_OQ);	
+			match_score = _mm256_and_pd(is_match, MATCH_SCORE);
+			mismatch_score = _mm256_andnot_pd(is_match, MISMATCH_SCORE);
+			match_score = _mm256_or_pd(match_score, mismatch_score);
+			top_left = _mm256_set_pd(matrix[(row1 - 1) * n + col1 - 1], matrix[(row2 - 1) * n + col2 - 1], matrix[(row3 - 1) * n + col3 - 1], matrix[(row4 - 1) * n + col4 - 1]);
+			score1 = _mm256_add_pd(top_left, match_score);
+			left = _mm256_set_pd(matrix[(row1 - 1) * n + col1], matrix[(row2 - 1) * n + col2], matrix[(row3 - 1) * n + col3], matrix[(row4 - 1) * n + col4]);
+			best_score = _mm256_max_pd(score1, left);
+			top = _mm256_set_pd(matrix[row1 * n + col1 - 1], matrix[row2 * n + col2 - 1], matrix[row3 * n + col3 - 1], matrix[row4 * n + col4 - 1]);
+			best_score = _mm256_max_pd(best_score, top);
+			best_score = _mm256_add_pd(best_score, GAP_SCORE);
 
-			r1 = _mm256_set_pd(a[row1 - 1], a[row2 - 1], a[row3 - 1], a[row4 - 1]);
-			r2 = _mm256_set_pd(b[col1 - 1], b[col2 - 1], b[col3 - 1], b[col4 - 1]);
-			r1 = _mm256_cmp_pd(r1, r2, _CMP_EQ_OQ);	
-			r2 = _mm256_and_pd(r1, MATCH_SCORE);
-			r1 = _mm256_andnot_pd(r1, MISMATCH_SCORE);
-			r1 = _mm256_or_pd(r1, r2);
-			r2 = _mm256_set_pd(matrix[(row1 - 1) * n + col1 - 1], matrix[(row2 - 1) * n + col2 - 1], matrix[(row3 - 1) * n + col3 - 1], matrix[(row4 - 1) * n + col4 - 1]);
-			r1 = _mm256_add_pd(r1, r2);
-			r2 = _mm256_set_pd(matrix[(row1 - 1) * n + col1], matrix[(row2 - 1) * n + col2], matrix[(row3 - 1) * n + col3], matrix[(row4 - 1) * n + col4]);
-			r1 = _mm256_max_pd(r1, r2);
-			r2 = _mm256_set_pd(matrix[row1 * n + col1 - 1], matrix[row2 * n + col2 - 1], matrix[row3 * n + col3 - 1], matrix[row4 * n + col4 - 1]);
-			r1 = _mm256_max_pd(r1, r2);
-			r1 = _mm256_add_pd(r1, GAP_SCORE);
+			// r1 = _mm256_set_pd(a[row1 - 1], a[row2 - 1], a[row3 - 1], a[row4 - 1]);
+			// r2 = _mm256_set_pd(b[col1 - 1], b[col2 - 1], b[col3 - 1], b[col4 - 1]);
+			// r1 = _mm256_cmp_pd(r1, r2, _CMP_EQ_OQ);	
+			// r2 = _mm256_and_pd(r1, MATCH_SCORE);
+			// r1 = _mm256_andnot_pd(r1, MISMATCH_SCORE);
+			// r1 = _mm256_or_pd(r1, r2);
+			// r2 = _mm256_set_pd(matrix[(row1 - 1) * n + col1 - 1], matrix[(row2 - 1) * n + col2 - 1], matrix[(row3 - 1) * n + col3 - 1], matrix[(row4 - 1) * n + col4 - 1]);
+			// r1 = _mm256_add_pd(r1, r2);
+			// r2 = _mm256_set_pd(matrix[(row1 - 1) * n + col1], matrix[(row2 - 1) * n + col2], matrix[(row3 - 1) * n + col3], matrix[(row4 - 1) * n + col4]);
+			// r1 = _mm256_max_pd(r1, r2);
+			// r2 = _mm256_set_pd(matrix[row1 * n + col1 - 1], matrix[row2 * n + col2 - 1], matrix[row3 * n + col3 - 1], matrix[row4 * n + col4 - 1]);
+			// r1 = _mm256_max_pd(r1, r2);
+			// r1 = _mm256_add_pd(r1, GAP_SCORE);
 
-			_mm256_store_pd(result, r1);
+			// _mm256_store_pd(result, r1);
+			_mm256_store_pd(result, best_score);
 
 			matrix[row1 * n + col1] = result[3];
 			matrix[row2 * n + col2] = result[2];
@@ -657,8 +744,7 @@ void naive(
 	int n,
 	double *restrict a,
 	double *restrict b,
-	double *restrict matrix)
-{
+	double *restrict matrix) {
 	for (int i = 1; i < m; i++)
 	{
 		for (int j = 1; j < n; j++)
@@ -670,8 +756,7 @@ void naive(
 }
 
 /* m row, n col */
-void initMatrix(int m, int n, double *matrix)
-{
+void init_matrix(int m, int n, double *matrix) {
 	for (int i = 0; i < n; i++)
 	{
 		matrix[i] = GAP * i;
@@ -682,8 +767,25 @@ void initMatrix(int m, int n, double *matrix)
 	}
 }
 
-void printMatrix(int m, int n, double *matrix)
-{
+void init_matrix_packed(int m, int n, double *packed) {
+	int i = 0;
+	int j = 0;
+
+	for (i = 0; i < 2 * m - 1; i ++) {
+		for (j = 0; j < n; j ++) {
+			packed[i * n + j] = 0;
+		}
+	}
+
+	for (j = 0; j < n; j ++) {
+		packed[j * n + j] = GAP * j;
+	}
+	for (i = 0; i < m; i ++) {
+		packed[i * n] = GAP * i;
+	}
+}
+
+void printMatrix(int m, int n, double *matrix) {
 	for (int i = 0; i < m; i++)
 	{
 		for (int j = 0; j < n; j++)
@@ -694,11 +796,10 @@ void printMatrix(int m, int n, double *matrix)
 	}
 }
 
-int main()
-{
+int main() {
 	double *a;
 	double *b;
-	double *matrix, *matrix_check;
+	double *matrix, *matrix_check, *packed;
 
 	unsigned long long t0, t1;
 
@@ -707,6 +808,12 @@ int main()
 	int n = 513; //n is the number of columns of C
 	char str1[] = "GATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACAT";
 	char str2[] = "GCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACAT";
+
+	// int m = 9; //m is the number of rows of C
+	// int n = 9; //n is the number of columns of C
+	// char str1[] = "GATTACAT";
+	// char str2[] = "GCATGCUT";
+
 
 	/*
 		Assume the following
@@ -719,6 +826,8 @@ int main()
 	posix_memalign((void **)&b, 64, (n - 1) * sizeof(double));
 	posix_memalign((void **)&matrix, 64, m * n * sizeof(double));
 	posix_memalign((void **)&matrix_check, 64, m * n * sizeof(double));
+
+	posix_memalign((void **)&packed, 64, (2 * m - 1) * n * sizeof(double));
 
 	
 
@@ -743,7 +852,7 @@ int main()
 	/************************************* Naive **************************************************/
 	int correct = 1;
 	long total_time = 0;
-	initMatrix(m, n, matrix_check);
+	init_matrix(m, n, matrix_check);
 
 	for (int i = 0; i < iteration; i++) {
 		t0 = rdtsc();
@@ -757,12 +866,11 @@ int main()
 	// printMatrix(m, n, matrix_check);
 	printf("Naive Result:\t\t\tm = %d,\t n = %d,\t time = %lf\n", m, n, ((double)(total_time) / iteration));
 
-	
 	/************************************* Kernel **************************************************/
 	correct = 1;
 	total_time = 0;
 	
-	initMatrix(m, n, matrix);
+	init_matrix(m, n, matrix);
 	for (int i = 0; i < iteration; i++) {
 		t0 = rdtsc();
 		kernel(m, n, a, b, matrix);
@@ -778,12 +886,33 @@ int main()
 		correct &= (matrix[i] == matrix_check[i]);
 	}
 	printf("Non-SIMD Kernel-4 Result:\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
+	/************************************* Kernel packed **************************************************/
+	correct = 1;
+	total_time = 0;
+	
+	init_matrix_packed(m, n, packed);
+	for (int i = 0; i < iteration; i++) {
+		t0 = rdtsc();
+		SIMDkernel4packed(m, n, a, b, packed);
+		t1 = rdtsc();
+		total_time += (t1 - t0);
+	}
+	
+	// printf("Kernel Result:\n");
+	// printMatrix(m, n, matrix);
+	
+	repack(m, n, packed, matrix);
 
+	for (int i = 0; i < (m) * (n); i++)
+	{
+		correct &= (matrix[i] == matrix_check[i]);
+	}
+	printf("Kernel-4 packed Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
 	/************************************* SIMD Kernel 4 **************************************************/
 	correct = 1;
 	total_time = 0;
 
-	initMatrix(m, n, matrix);
+	init_matrix(m, n, matrix);
 	for (int i = 0; i < iteration; i++) {
 		t0 = rdtsc();
 		SIMDkernel4(m, n, a, b, matrix);
@@ -800,63 +929,63 @@ int main()
 	}
 	printf("SIMD Kernel-4 Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
 	/************************************* SIMD Kernel 8 **************************************************/
-	correct = 1;
-	total_time = 0;
+	// correct = 1;
+	// total_time = 0;
 
-	initMatrix(m, n, matrix);
-	for (int i = 0; i < iteration; i++) {
-		t0 = rdtsc();
-		SIMDkernel8(m, n, a, b, matrix);
-		t1 = rdtsc();
-		total_time += (t1 - t0);
-	}
+	// init_matrix(m, n, matrix);
+	// for (int i = 0; i < iteration; i++) {
+	// 	t0 = rdtsc();
+	// 	SIMDkernel8(m, n, a, b, matrix);
+	// 	t1 = rdtsc();
+	// 	total_time += (t1 - t0);
+	// }
 
-	// printf("SIMD Kernel-8 Result:\n");
-	// printMatrix(m, n, matrix);
-	for (int i = 0; i < (m) * (n); i++)
-	{
-		correct &= (matrix[i] == matrix_check[i]);
-	}
-	printf("SIMD Kernel-8 Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
+	// // printf("SIMD Kernel-8 Result:\n");
+	// // printMatrix(m, n, matrix);
+	// for (int i = 0; i < (m) * (n); i++)
+	// {
+	// 	correct &= (matrix[i] == matrix_check[i]);
+	// }
+	// printf("SIMD Kernel-8 Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
 	/************************************* SIMD Kernel 16 **************************************************/
-	correct = 1;
-	total_time = 0;
+	// correct = 1;
+	// total_time = 0;
 
-	initMatrix(m, n, matrix);
-	for (int i = 0; i < iteration; i++) {
-		t0 = rdtsc();
-		SIMDkernel16(m, n, a, b, matrix);
-		t1 = rdtsc();
-		total_time += (t1 - t0);
-	}
+	// init_matrix(m, n, matrix);
+	// for (int i = 0; i < iteration; i++) {
+	// 	t0 = rdtsc();
+	// 	SIMDkernel16(m, n, a, b, matrix);
+	// 	t1 = rdtsc();
+	// 	total_time += (t1 - t0);
+	// }
 
-	// printf("SIMD Kernel-16 Result:\n");
-	// printMatrix(m, n, matrix);
-	for (int i = 0; i < (m) * (n); i++)
-	{
-		correct &= (matrix[i] == matrix_check[i]);
-	}
-	printf("SIMD Kernel-16 Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
+	// // printf("SIMD Kernel-16 Result:\n");
+	// // printMatrix(m, n, matrix);
+	// for (int i = 0; i < (m) * (n); i++)
+	// {
+	// 	correct &= (matrix[i] == matrix_check[i]);
+	// }
+	// printf("SIMD Kernel-16 Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
 	/************************************* SIMD Kernel 32 **************************************************/
-	correct = 1;
-	total_time = 0;
+	// correct = 1;
+	// total_time = 0;
 
-	initMatrix(m, n, matrix);
-	for (int i = 0; i < iteration; i++) {
-		t0 = rdtsc();
-		SIMDkernel32(m, n, a, b, matrix);
-		t1 = rdtsc();
-		total_time += (t1 - t0);
-	}
+	// init_matrix(m, n, matrix);
+	// for (int i = 0; i < iteration; i++) {
+	// 	t0 = rdtsc();
+	// 	SIMDkernel32(m, n, a, b, matrix);
+	// 	t1 = rdtsc();
+	// 	total_time += (t1 - t0);
+	// }
 
-	// printf("SIMD Kernel-32 Result:\n");
-	// printMatrix(m, n, matrix);
-	correct = 1;
-	for (int i = 0; i < (m) * (n); i++)
-	{
-		correct &= (matrix[i] == matrix_check[i]);
-	}
-	printf("SIMD Kernel-32 Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
+	// // printf("SIMD Kernel-32 Result:\n");
+	// // printMatrix(m, n, matrix);
+	// correct = 1;
+	// for (int i = 0; i < (m) * (n); i++)
+	// {
+	// 	correct &= (matrix[i] == matrix_check[i]);
+	// }
+	// printf("SIMD Kernel-32 Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
 	/***********************************************************************************************/
 
 	free(a);
