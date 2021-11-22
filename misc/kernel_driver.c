@@ -86,9 +86,12 @@ void SIMDkernel4packed(
 	int i = 0;
 	int j = 0;
 	int k = 0;
-	int size = 4;
+	int size = 16;
 
 	__m256d seq_A, seq_B, is_match, match_score, mismatch_score, both_prev, A_prev, B_prev, best_score;
+	__m256d seq_A1, seq_B1, is_match1, match_score1, mismatch_score1, both_prev1, A_prev1, B_prev1, best_score1;
+	__m256d seq_A2, seq_B2, is_match2, match_score2, mismatch_score2, both_prev2, A_prev2, B_prev2, best_score2;
+	__m256d seq_A3, seq_B3, is_match3, match_score3, mismatch_score3, both_prev3, A_prev3, B_prev3, best_score3;
 
 	for (j = 1; j < n; j += size) {
 		i = j + 1;
@@ -108,57 +111,83 @@ void SIMDkernel4packed(
 			int old_i_0 = i - j;
 			int old_j_0 = j;
 
-			// double s0 = (a[old_i_0 - 1 - 0] == b[old_j_0 - 1 + 0]) ? MATCH : MISMATCH;
-			// double s1 = (a[old_i_0 - 1 - 1] == b[old_j_0 - 1 + 1]) ? MATCH : MISMATCH;
-			// double s2 = (a[old_i_0 - 1 - 2] == b[old_j_0 - 1 + 2]) ? MATCH : MISMATCH;
-			// double s3 = (a[old_i_0 - 1 - 3] == b[old_j_0 - 1 + 3]) ? MATCH : MISMATCH;
-
 			seq_A = _mm256_load_pd(&a[old_i_0 - 1 - 3]);
 			seq_A = _mm256_permute4x64_pd(seq_A, 0b00011011);
-			seq_B = _mm256_load_pd(&b[old_j_0 - 1 + 0]);
+			seq_B = _mm256_load_pd(&b[old_j_0 - 1]);
+
+			seq_A1 = _mm256_load_pd(&a[old_i_0 - 1 - 7]);
+			seq_A1 = _mm256_permute4x64_pd(seq_A1, 0b00011011);
+			seq_B1 = _mm256_load_pd(&b[old_j_0 - 1 + 4]);
+
+			seq_A2 = _mm256_load_pd(&a[old_i_0 - 1 - 11]);
+			seq_A2 = _mm256_permute4x64_pd(seq_A2, 0b00011011);
+			seq_B2 = _mm256_load_pd(&b[old_j_0 - 1 + 8]);
+
+			seq_A3 = _mm256_load_pd(&a[old_i_0 - 1 - 15]);
+			seq_A3 = _mm256_permute4x64_pd(seq_A3, 0b00011011);
+			seq_B3 = _mm256_load_pd(&b[old_j_0 - 1 + 12]);
 			
 			is_match = _mm256_cmp_pd(seq_A, seq_B, _CMP_EQ_OQ);	
 			match_score = _mm256_and_pd(is_match, MATCH_SCORE);
 			mismatch_score = _mm256_andnot_pd(is_match, MISMATCH_SCORE);
 			match_score = _mm256_or_pd(match_score, mismatch_score);
 
+			is_match1 = _mm256_cmp_pd(seq_A1, seq_B1, _CMP_EQ_OQ);	
+			match_score1 = _mm256_and_pd(is_match1, MATCH_SCORE);
+			mismatch_score1 = _mm256_andnot_pd(is_match1, MISMATCH_SCORE);
+			match_score1 = _mm256_or_pd(match_score1, mismatch_score1);
 
-			both_prev = _mm256_load_pd(&packed[(i - 2) * n + j - 1]);
-			A_prev = _mm256_load_pd(&packed[(i - 1) * n + j - 1]);
-			B_prev = _mm256_load_pd(&packed[(i - 1) * n + j]);
+			is_match2 = _mm256_cmp_pd(seq_A2, seq_B2, _CMP_EQ_OQ);	
+			match_score2 = _mm256_and_pd(is_match2, MATCH_SCORE);
+			mismatch_score2 = _mm256_andnot_pd(is_match2, MISMATCH_SCORE);
+			match_score2 = _mm256_or_pd(match_score2, mismatch_score2);
+
+			is_match3 = _mm256_cmp_pd(seq_A3, seq_B3, _CMP_EQ_OQ);	
+			match_score3 = _mm256_and_pd(is_match3, MATCH_SCORE);
+			mismatch_score3 = _mm256_andnot_pd(is_match3, MISMATCH_SCORE);
+			match_score3 = _mm256_or_pd(match_score3, mismatch_score3);
+
+
+			both_prev = _mm256_loadu_pd(&packed[(i - 2) * n + j - 1]);
+			A_prev = _mm256_loadu_pd(&packed[(i - 1) * n + j - 1]);
+			B_prev = _mm256_loadu_pd(&packed[(i - 1) * n + j]);
+
+			both_prev1 = _mm256_loadu_pd(&packed[(i - 2) * n + j - 1 + 4]);
+			A_prev1 = _mm256_loadu_pd(&packed[(i - 1) * n + j - 1 + 4]);
+			B_prev1 = _mm256_loadu_pd(&packed[(i - 1) * n + j + 4]);
+
+			both_prev2 = _mm256_loadu_pd(&packed[(i - 2) * n + j - 1 + 8]);
+			A_prev2 = _mm256_loadu_pd(&packed[(i - 1) * n + j - 1] + 8);
+			B_prev2 = _mm256_loadu_pd(&packed[(i - 1) * n + j] + 8);
+
+			both_prev3 = _mm256_loadu_pd(&packed[(i - 2) * n + j - 1 + 12]);
+			A_prev3 = _mm256_loadu_pd(&packed[(i - 1) * n + j - 1 + 12]);
+			B_prev3 = _mm256_loadu_pd(&packed[(i - 1) * n + j + 12]);
 
 			both_prev = _mm256_add_pd(both_prev, match_score);
-
-			// A_prev = _mm256_add_pd(A_prev, GAP_SCORE);
-			// B_prev = _mm256_add_pd(B_prev, GAP_SCORE);
+			both_prev1 = _mm256_add_pd(both_prev1, match_score1);
+			both_prev2 = _mm256_add_pd(both_prev2, match_score2);
+			both_prev3 = _mm256_add_pd(both_prev3, match_score3);
 
 			best_score = _mm256_max_pd(both_prev, A_prev);
+			best_score1 = _mm256_max_pd(both_prev1, A_prev1);
+			best_score2 = _mm256_max_pd(both_prev2, A_prev2);
+			best_score3 = _mm256_max_pd(both_prev3, A_prev3);
+
 			best_score = _mm256_max_pd(best_score, B_prev);
+			best_score1 = _mm256_max_pd(best_score1, B_prev1);
+			best_score2 = _mm256_max_pd(best_score2, B_prev2);
+			best_score3 = _mm256_max_pd(best_score3, B_prev3);
+
 			best_score = _mm256_add_pd(best_score, GAP_SCORE);
+			best_score1 = _mm256_add_pd(best_score1, GAP_SCORE);
+			best_score2 = _mm256_add_pd(best_score2, GAP_SCORE);
+			best_score3 = _mm256_add_pd(best_score3, GAP_SCORE);
 
 			_mm256_storeu_pd(&packed[i * n + (j + 0)], best_score);
-			// _mm256_store_pd(&packed[28], best_score);
-			// packed[i * n + (j + 0)] = best_score[0];
-			// packed[i * n + (j + 1)] = best_score[1];
-			// packed[i * n + (j + 2)] = best_score[2];
-			// packed[i * n + (j + 3)] = best_score[3];
-
-			// packed[i * n + (j + 0)] = max(
-			// 	packed[(i - 2) * n + (j + 0) - 1] + s0,
-			// 	packed[(i - 1) * n + (j + 0) - 1] + GAP,
-			// 	packed[(i - 1) * n + (j + 0)] + GAP);
-			// packed[i * n + (j + 1)] = max(
-			// 	packed[(i - 2) * n + (j + 1) - 1] + s1,
-			// 	packed[(i - 1) * n + (j + 1) - 1] + GAP,
-			// 	packed[(i - 1) * n + (j + 1)] + GAP);
-			// packed[i * n + (j + 2)] = max(
-			// 	packed[(i - 2) * n + (j + 2) - 1] + s2,
-			// 	packed[(i - 1) * n + (j + 2) - 1] + GAP,
-			// 	packed[(i - 1) * n + (j + 2)] + GAP);
-			// packed[i * n + (j + 3)] = max(
-			// 	packed[(i - 2) * n + (j + 3) - 1] + s3,
-			// 	packed[(i - 1) * n + (j + 3) - 1] + GAP,
-			// 	packed[(i - 1) * n + (j + 3)] + GAP);
+			_mm256_storeu_pd(&packed[i * n + (j + 0) + 4], best_score1);
+			_mm256_storeu_pd(&packed[i * n + (j + 0) + 8], best_score2);
+			_mm256_storeu_pd(&packed[i * n + (j + 0) + 12], best_score3);
 		}
 		i = j + m;
 		for (; i < j + m + size - 1; i ++) {
@@ -846,10 +875,10 @@ int main() {
 	char str1[] = "GATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACAT";
 	char str2[] = "GCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACAT";
 
-	// int m = 5; //m is the number of rows of C
-	// int n = 5; //n is the number of columns of C
-	// char str1[] = "GATT";
-	// char str2[] = "GCAT";
+	// int m = 9; //m is the number of rows of C
+	// int n = 9; //n is the number of columns of C
+	// char str1[] = "GATTACAT";
+	// char str2[] = "GCATGCUT";
 
 
 	/*
@@ -990,24 +1019,24 @@ int main() {
 	}
 	printf("SIMD Kernel-4 Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
 	/************************************* SIMD Kernel 8 **************************************************/
-	// correct = 1;
-	// total_time = 0;
+	correct = 1;
+	total_time = 0;
 
-	// init_matrix(m, n, matrix);
-	// for (int i = 0; i < iteration; i++) {
-	// 	t0 = rdtsc();
-	// 	SIMDkernel8(m, n, a, b, matrix);
-	// 	t1 = rdtsc();
-	// 	total_time += (t1 - t0);
-	// }
+	init_matrix(m, n, matrix);
+	for (int i = 0; i < iteration; i++) {
+		t0 = rdtsc();
+		SIMDkernel8(m, n, a, b, matrix);
+		t1 = rdtsc();
+		total_time += (t1 - t0);
+	}
 
-	// // printf("SIMD Kernel-8 Result:\n");
-	// // printMatrix(m, n, matrix);
-	// for (int i = 0; i < (m) * (n); i++)
-	// {
-	// 	correct &= (matrix[i] == matrix_check[i]);
-	// }
-	// printf("SIMD Kernel-8 Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
+	// printf("SIMD Kernel-8 Result:\n");
+	// printMatrix(m, n, matrix);
+	for (int i = 0; i < (m) * (n); i++)
+	{
+		correct &= (matrix[i] == matrix_check[i]);
+	}
+	printf("SIMD Kernel-8 Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
 	/************************************* SIMD Kernel 16 **************************************************/
 	// correct = 1;
 	// total_time = 0;
