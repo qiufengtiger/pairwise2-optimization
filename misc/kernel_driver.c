@@ -967,14 +967,14 @@ int main() {
 	unsigned long long t0, t1;
 
 	int iteration = 100;
-	int m = 33; //m is the number of rows of C
-	int n = 33; //n is the number of columns of C
+	int m = 513; //m is the number of rows of C
+	int n = 513; //n is the number of columns of C
 	// char str1[] = "GATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACAT";
 	// char str2[] = "GCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACAT";
 
 	// make random dna sequences
-	char str1[m+1];  //add one because the \0 character
-	char str2[n+1];
+	char str1[m];   // including a \0 character
+	char str2[n];
 
 	rand_dna_seq(str1, sizeof str1 - 1);
 	rand_dna_seq(str2, sizeof str2 - 1);
@@ -1027,7 +1027,6 @@ int main() {
 	/************************************* Naive **************************************************/
 	int correct = 1;
 	long total_time = 0;
-	set_zeros(m, n, matrix);
 	set_zeros(m, n, matrix_check);
 
 	init_matrix(m, n, matrix_check);
@@ -1056,7 +1055,7 @@ int main() {
 	correct = 1;
 	total_time = 0;
 	set_zeros(m, n, matrix);
-	set_zeros(m, n, matrix_check);
+
 	
 	init_matrix(m, n, matrix);
 	for (int i = 0; i < iteration; i++) {
@@ -1078,16 +1077,12 @@ int main() {
 	correct = 1;
 	total_time = 0;
 	set_zeros(m, n, matrix);
-	set_zeros(m, n, matrix_check);
 	
 
 	init_matrix_packed(m, n, packed);
 	for (int i = 0; i < iteration; i++) {
 		t0 = rdtsc();
 		SIMDkernel4packed(m, n, a, b, packed);
-		packed[5] = 987;
-		packed[6] = 8456;
-		packed[7] = 5555;
 		t1 = rdtsc();
 		total_time += (t1 - t0);
 	}
@@ -1095,6 +1090,7 @@ int main() {
 	// printf("Kernel Result:\n");
 	// printMatrix(m, n, matrix);
 	repack(m, n, packed, matrix);
+
 
 	for (int i = 0; i < (m) * (n); i++)
 	{
@@ -1120,6 +1116,7 @@ int main() {
 	/************************************* SIMD Kernel 4 **************************************************/
 	correct = 1;
 	total_time = 0;
+	set_zeros(m, n, matrix);
 
 	init_matrix(m, n, matrix);
 	for (int i = 0; i < iteration; i++) {
@@ -1140,6 +1137,7 @@ int main() {
 	/************************************* SIMD Kernel 8 **************************************************/
 	correct = 1;
 	total_time = 0;
+	set_zeros(m, n, matrix);
 
 	init_matrix(m, n, matrix);
 	for (int i = 0; i < iteration; i++) {
