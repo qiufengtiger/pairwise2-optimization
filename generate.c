@@ -14,12 +14,12 @@ void rand_dna_seq(char *dest, size_t length) {
     *dest = '\0';
 }
 
-void main () {
-    int m = 16, n = 16;
+void main (int argc, char *argv[]) {
+    int m = atoi(argv[1]), n = atoi(argv[2]);
 
     char str1[m+1];
     char str2[n+1];
-    FILE *fp = fopen("../seq.txt", "w");
+    FILE *fp = fopen("./seq.txt", "w");
     fprintf(fp,"%d ",m+1); 
     fprintf(fp,"%d\n",n+1); 
     rand_dna_seq(str1, m);
