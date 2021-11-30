@@ -5,8 +5,14 @@ import distutils.util
 import pairwise2
 import pairwise2simd
 
-sequenceA = "ACCGTACACGTAGC"
-sequenceB = "ACGTCGA"
+
+f = open("../seq.txt")
+f.readline()
+sequenceA = f.readline()
+sequenceB = f.readline()
+
+print(sequenceA)
+print(sequenceB)
 
 # alignments = pairwise2.align.globalxx(sequenceA=sequenceA, sequenceB=sequenceB)
 # alignments_simd = pairwise2simd.align.globalxx(sequenceA=sequenceA, sequenceB=sequenceB)

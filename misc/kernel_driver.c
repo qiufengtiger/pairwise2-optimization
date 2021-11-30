@@ -835,6 +835,23 @@ void rand_dna_seq(char *dest, size_t length) {
     *dest = '\0';
 }
 
+void save_matrix(int m, int n, double *matrix) {
+	FILE *fp;    
+    if( (fp=fopen("../kernel_res.txt","w")) == NULL ){
+        printf("Cannot open file, press any key to exit!\n");
+        exit(1);
+    }
+	for (int i = 0; i < m; i++)
+	{
+		for (int j = 0; j < n; j++)
+		{
+			fprintf(fp,"%d ",(int) matrix[i * n + j]); 
+		}
+		fprintf(fp,"\n");
+	}
+	fclose(fp);
+}
+
 int main() {
 	double *a;
 	double *b;
@@ -843,17 +860,34 @@ int main() {
 	unsigned long long t0, t1;
 
 	int iteration = 100;
-	int m = 513; //m is the number of rows of C
-	int n = 513; //n is the number of columns of C
+	int m = 1; //m is the number of rows of C
+	int n = 1; //n is the number of columns of C
 	// char str1[] = "GATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACAT";
 	// char str2[] = "GCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACAT";
+    
+
+    FILE *fp;    
+    if( (fp=fopen("../seq.txt","rt")) == NULL ){
+        printf("Cannot open file, press any key to exit!\n");
+        exit(1);
+    }
+
+	fscanf(fp,"%d ",&m); 
+    fscanf(fp,"%d\n",&n);
+    printf("m = %d, n = %d\n", m, n);
 
 	// make random dna sequences
 	char str1[m];   // including a \0 character
 	char str2[n];
+   
+   fgets(str1, m+2, fp);
+   fgets(str2, n+2, fp);
+   printf("Sequence1: %s\n", str1);
+   printf("Sequence2: %s\n", str2);
+	fclose(fp);
 
-	rand_dna_seq(str1, sizeof str1 - 1);
-	rand_dna_seq(str2, sizeof str2 - 1);
+	// rand_dna_seq(str1, sizeof str1 - 1);
+	// rand_dna_seq(str2, sizeof str2 - 1);
 
 	// printf("%s\n", str1);
 	// printf("%s\n", str2);
@@ -1024,7 +1058,7 @@ int main() {
 	}
 
 	// printf("SIMD Kernel-8 Result:\n");
-	// printMatrix(m, n, matrix);
+	save_matrix(m, n, matrix);
 	for (int i = 0; i < (m) * (n); i++)
 	{
 		correct &= (matrix[i] == matrix_check[i]);
