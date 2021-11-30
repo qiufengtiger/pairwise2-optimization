@@ -6,5 +6,25 @@
 # 	rm -rf *.x *.o *~
 
 CC = gcc
-CFLAGS = -O3 -std=c99 -mavx -mfma -mavx2 -Wall -Wno-nullability-completeness
+CFLAGS = -O3 -std=c99 -mavx -mfma -mavx2 -Wall
+OBJS = naive.o packed_kernels.o nopack_kernels.o
+DEPS = naive.h packed_kernels.h nopack_kernels.h
 
+
+all: test_kernels.x
+	./test_kernels.x
+
+test_kernels.x: $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) $(DEPS) kernel_driver.c -o test_kernels.x
+
+naive.o: naive.c 
+	$(CC) $(CFLAGS) -c naive.c
+
+packed_kernels.o: packed_kernels.c naive.h
+	$(CC) $(CFLAGS) -c packed_kernels.c
+
+nopack_kernels.o: nopack_kernels.c naive.h
+	$(CC) $(CFLAGS) -c nopack_kernels.c
+
+clean:
+	rm -rf *.x *.o *~

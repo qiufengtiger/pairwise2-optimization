@@ -1,5 +1,10 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
 
-
+#define MATCH 1
+#define MISMATCH -1
+#define GAP -1
 
 /* set all elements to zeros  */
 void set_zeros(int m, int n, double *matrix) {

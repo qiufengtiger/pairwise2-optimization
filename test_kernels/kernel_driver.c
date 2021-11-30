@@ -4,13 +4,9 @@
 
 #include "immintrin.h"
 #include "naive.h"
-#include "plain_kernels.h"
+#include "nopack_kernels.h"
 #include "packed_kernels.h"
 
-
-#define MATCH 1
-#define MISMATCH -1
-#define GAP -1
 
 //timing routine for reading the time stamp counter
 static __inline__ unsigned long long rdtsc(void)
@@ -31,8 +27,8 @@ int main() {
 	unsigned long long t0, t1;
 
 	int iteration = 100;
-	int m = 17; //m is the number of rows of C
-	int n = 17; //n is the number of columns of C
+	int m = 33; //m is the number of rows of C
+	int n = 33; //n is the number of columns of C
 	// char str1[] = "GATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACAT";
 	// char str2[] = "GCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACAT";
 
@@ -124,7 +120,7 @@ int main() {
 	init_matrix(m, n, matrix);
 	for (int i = 0; i < iteration; i++) {
 		t0 = rdtsc();
-		kernel(m, n, a, b, matrix);
+		noSIMD_nopack_kernel_4(m, n, a, b, matrix);
 		t1 = rdtsc();
 		total_time += (t1 - t0);
 	}
@@ -146,7 +142,7 @@ int main() {
 	init_matrix_packed(m, n, packed);
 	for (int i = 0; i < iteration; i++) {
 		t0 = rdtsc();
-		SIMDkernel4packed(m, n, a, b, packed);
+		packed_kernel_4(m, n, a, b, packed);
 		t1 = rdtsc();
 		total_time += (t1 - t0);
 	}
@@ -185,7 +181,7 @@ int main() {
 	init_matrix(m, n, matrix);
 	for (int i = 0; i < iteration; i++) {
 		t0 = rdtsc();
-		SIMDkernel4(m, n, a, b, matrix);
+		nopack_kernel_4(m, n, a, b, matrix);
 		t1 = rdtsc();
 		total_time += (t1 - t0);
 	}
@@ -206,7 +202,7 @@ int main() {
 	init_matrix(m, n, matrix);
 	for (int i = 0; i < iteration; i++) {
 		t0 = rdtsc();
-		SIMDkernel8(m, n, a, b, matrix);
+		nopack_kernel_8(m, n, a, b, matrix);
 		t1 = rdtsc();
 		total_time += (t1 - t0);
 	}

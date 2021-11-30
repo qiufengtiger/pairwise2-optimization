@@ -1,4 +1,4 @@
-
+#include <stdio.h>
 
 
 void set_zeros(int m, int n, double *matrix);

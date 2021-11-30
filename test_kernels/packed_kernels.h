@@ -1,6 +1,28 @@
 
 
-void SIMDkernel4packed(
+
+void noSIMD_packed_kernel_4(
+	int m,
+	int n,
+	double *restrict a,
+	double *restrict b,
+	double *restrict packed);
+
+void packed_kernel_4(
+	int m,
+	int n,
+	double *restrict a,
+	double *restrict b,
+	double *restrict packed);
+
+void packed_kernel_16(
+	int m,
+	int n,
+	double *restrict a,
+	double *restrict b,
+	double *restrict packed);
+
+void packed_kernel_32(
 	int m,
 	int n,
 	double *restrict a,
