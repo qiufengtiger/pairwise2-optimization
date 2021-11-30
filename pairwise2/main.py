@@ -8,8 +8,8 @@ import pairwise2simd
 
 f = open("../seq.txt")
 f.readline()
-sequenceA = f.readline()
-sequenceB = f.readline()
+sequenceA = f.readline()[:-1]
+sequenceB = f.readline()[:-1]
 
 print(sequenceA)
 print(sequenceB)
