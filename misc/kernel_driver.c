@@ -880,10 +880,10 @@ int main() {
 	char str1[m];   // including a \0 character
 	char str2[n];
    
-   fgets(str1, m+2, fp);
-   fgets(str2, n+2, fp);
-   printf("Sequence1: %s\n", str1);
-   printf("Sequence2: %s\n", str2);
+	fgets(str1, m+2, fp);
+	fgets(str2, n+2, fp);
+	printf("Sequence1: %s\n", str1);
+	printf("Sequence2: %s\n", str2);
 	fclose(fp);
 
 	// rand_dna_seq(str1, sizeof str1 - 1);
