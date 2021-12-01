@@ -2,13 +2,13 @@ import sys
 import os
 from setuptools import setup
 from setuptools import Extension
+
+COMPILE_ARGS = ['-O3', '-std=c99', '-mavx', '-mavx2']
 EXTENSIONS = [
-    Extension("cpairwise2", ["cpairwise2.c"]),
-    Extension("cpairwise2simd", ["cpairwise2simd.c"]),
+    Extension("cpairwise2", sources=["cpairwise2.c"]),
+    Extension("cpairwise2kernel", sources=["cpairwise2kernel.c"], extra_compile_args=COMPILE_ARGS),
 ]
-# COMPILE_ARGS = ["-Wno-unused-parameter", "-Wunused-function", "-Wunused-but-set-variable"]
 setup(
     name="biopython",
     ext_modules=EXTENSIONS,
-    # extra_compile_args=COMPILE_ARGS,
 )

@@ -14,67 +14,22 @@
  */
 
 #include "Python.h"
+#include "immintrin.h"
 
+/* Kernel defines */
+#define MATCH 1
+#define MISMATCH -1
+#define GAP -1
 
 #define _PRECISION 1000
 #define rint(x) (int)((x)*_PRECISION+0.5)
 
+static int max(int a, int b, int c)
+{
+    return a > b ? (a > c ? a : c) : (b > c ? b : c);
+}
+
 /* Functions in this module. */
-
-static double calc_affine_penalty(int length, double open, double extend,
-    int penalize_extend_when_opening)
-{
-    double penalty;
-
-    if(length <= 0)
-        return 0.0;
-    penalty = open + extend * length;
-    if(!penalize_extend_when_opening)
-        penalty -= extend;
-    return penalty;
-}
-
-static double _get_match_score(PyObject *py_sequenceA, PyObject *py_sequenceB,
-                               PyObject *py_match_fn, int i, int j,
-                               char *sequenceA, char *sequenceB,
-                               int use_sequence_cstring,
-                               double match, double mismatch,
-                               int use_match_mismatch_scores)
-{
-    PyObject *py_A=NULL, *py_B=NULL;
-    PyObject *py_arglist=NULL, *py_result=NULL;
-    double score = 0;
-    if(use_sequence_cstring && use_match_mismatch_scores) {
-        score = (sequenceA[i] == sequenceB[j]) ? match : mismatch;
-        return score;
-    }
-    /* Calculate the match score. */
-    if(!(py_A = PySequence_GetItem(py_sequenceA, i)))
-        goto _get_match_score_cleanup;
-    if(!(py_B = PySequence_GetItem(py_sequenceB, j)))
-        goto _get_match_score_cleanup;
-    if(!(py_arglist = Py_BuildValue("(OO)", py_A, py_B)))
-        goto _get_match_score_cleanup;
-
-    if(!(py_result = PyEval_CallObject(py_match_fn, py_arglist)))
-        goto _get_match_score_cleanup;
-    score = PyFloat_AsDouble(py_result);
-
- _get_match_score_cleanup:
-    if(py_A) {
-        Py_DECREF(py_A);
-    }
-    if(py_B) {
-        Py_DECREF(py_B);
-    }
-    if(py_arglist) {
-        Py_DECREF(py_arglist);
-    }
-    if(py_result) {
-        Py_DECREF(py_result);
-    }
-    return score;
-}
 
 #if PY_MAJOR_VERSION >= 3
 static PyObject* _create_bytes_object(PyObject* o)
@@ -102,7 +57,6 @@ static PyObject* _create_bytes_object(PyObject* o)
 static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
                                                     PyObject *args)
 {
-    int i;
     int row, col;
     PyObject *py_sequenceA, *py_sequenceB, *py_match_fn;
 #if PY_MAJOR_VERSION >= 3
@@ -113,6 +67,7 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
     double open_A, extend_A, open_B, extend_B;
     int penalize_extend_when_opening, penalize_end_gaps_A, penalize_end_gaps_B;
     int align_globally, score_only;
+
     PyObject *py_match=NULL, *py_mismatch=NULL;
     double first_A_gap, first_B_gap;
     double match, mismatch;
@@ -125,7 +80,7 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
     unsigned char *trace_matrix = NULL;
     PyObject *py_score_matrix=NULL, *py_trace_matrix=NULL;
 
-    // double col_cache_score;
+    // double *col_cache_score = NULL;
     PyObject *py_retval = NULL;
 
     if(!PyArg_ParseTuple(args, "OOOddddi(ii)ii", &py_sequenceA, &py_sequenceB,
@@ -139,6 +94,7 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
                         "py_sequenceA and py_sequenceB should be sequences.");
         return NULL;
     }
+
     /* Optimize for the common case. Check to see if py_sequenceA and
        py_sequenceB are strings.  If they are, use the c string
        representation. */
@@ -194,13 +150,6 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
     if(py_mismatch) {
         Py_DECREF(py_mismatch);
     }
-    /* Cache some commonly used gap penalties */
-    // first_A_gap = calc_affine_penalty(1, open_A, extend_A,
-    //                                   penalize_extend_when_opening);
-    // first_B_gap = calc_affine_penalty(1, open_B, extend_B,
-    //                                   penalize_extend_when_opening);
-    first_A_gap = -1;
-    first_B_gap = -1;
 
     /* Allocate matrices for storing the results and initialize first row and col. */
     lenA = PySequence_Length(py_sequenceA);
@@ -210,130 +159,136 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
         PyErr_SetString(PyExc_MemoryError, "Out of memory");
         goto _cleanup_make_score_matrix_fast;
     }
-    for(i=0; i<(lenB+1); i++)
-        score_matrix[i] = 0;
-    for(i=0; i<(lenA+1)*(lenB+1); i += (lenB+1))
-        score_matrix[i] = 0;
-    /* If we only want the score, we don't need the trace matrix. */
-    if (!score_only){
-        trace_matrix = malloc((lenA+1)*(lenB+1)*sizeof(*trace_matrix));
-        if(!trace_matrix) {
-            PyErr_SetString(PyExc_MemoryError, "Out of memory");
-            goto _cleanup_make_score_matrix_fast;
-        }
-        for(i=0; i<(lenB+1); i++)
-            trace_matrix[i] = 0;
-        for(i=0; i<(lenA+1)*(lenB+1); i += (lenB+1))
-            trace_matrix[i] = 0;
-        }
-    else
-        trace_matrix = malloc(1);
+    
+    /* Kernel starts here */
 
-    /* Initialize the first row and col of the score matrix. */
-    for(i=0; i<=lenA; i++) {
-        if(penalize_end_gaps_B)
-            score = calc_affine_penalty(i, open_B, extend_B,
-                                        penalize_extend_when_opening);
-        else
-            score = 0;
-        score_matrix[i*(lenB+1)] = score;
-    }
-    for(i=0; i<=lenB; i++) {
-        if(penalize_end_gaps_A)
-            score = calc_affine_penalty(i, open_A, extend_A,
-                                        penalize_extend_when_opening);
-        else
-            score = 0;
-        score_matrix[i] = score;
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    int m = lenA + 1;
+    int n = lenB + 1;
+    double *packed, *a, *b;
+
+    // kernel size: 32 doubles
+    int size = 32;
+    int num_SIMD_in_kernel = size / 4;
+
+    posix_memalign((void **)&packed, 64, (2 * m - 1) * n * sizeof(double));
+    posix_memalign((void **)&a, 64, (m - 1) * sizeof(double));
+    posix_memalign((void **)&b, 64, (n - 1) * sizeof(double));
+
+    // preparing work: align char to 64 bit
+    for (int i = 0; i < m - 1; i++) {
+        a[i] = (double)sequenceA[i];
     }
 
-    /* Fill in the score matrix. The row cache is calculated on the fly.*/
-    for(row=1; row<=lenA; row++) {
-        
-        for(col=1; col<=lenB; col++) {
-            double row_cache_score = calc_affine_penalty(row, (2*open_A), extend_A,
-                                 penalize_extend_when_opening);
-            double col_cache_score = calc_affine_penalty(col, (2*open_B), extend_B,
-                             penalize_extend_when_opening);
-            double match_score, nogap_score;
-            double row_open, row_extend, col_open, col_extend;
-            int best_score_rint, row_score_rint, col_score_rint;
-            unsigned char row_trace_score, col_trace_score, trace_score;
+    for (int i = 0; i < n - 1; i++) {
+        b[i] = (double)sequenceB[i];
+    }
 
-            /* Calculate the best score. */
-            match_score = _get_match_score(py_sequenceA, py_sequenceB,
-                                           py_match_fn, row-1, col-1,
-                                           sequenceA, sequenceB,
-                                           use_sequence_cstring,
-                                           match, mismatch,
-                                           use_match_mismatch_scores);
-            if(match_score==-1.0 && PyErr_Occurred())
-                goto _cleanup_make_score_matrix_fast;
-            nogap_score = score_matrix[(row-1)*(lenB+1)+col-1] + match_score;
-            if (!penalize_end_gaps_A && row==lenA) {
-                row_open = score_matrix[(row)*(lenB+1)+col-1];
-                row_extend = row_cache_score;
+    double match_point[4] = {MATCH - GAP, MATCH - GAP, MATCH - GAP, MATCH - GAP};
+    double mismatch_point[4] = {MISMATCH - GAP, MISMATCH - GAP, MISMATCH - GAP, MISMATCH - GAP};
+    double gap_point[4] = {GAP, GAP, GAP, GAP};
+
+    __m256d MATCH_SCORE = _mm256_load_pd(match_point);
+    __m256d MISMATCH_SCORE = _mm256_load_pd(mismatch_point);
+    __m256d GAP_SCORE = _mm256_load_pd(gap_point);
+
+    for (i = 0; i < 2 * m - 1; i ++) {
+        for (j = 0; j < n; j ++) {
+            packed[i * n + j] = 0;
+        }
+    }
+
+    for (j = 0; j < n; j ++) {
+        packed[j * n + j] = GAP * j;
+    }
+    for (i = 0; i < m; i ++) {
+        packed[i * n] = GAP * i;
+    }
+
+    i = 0;
+    j = 0;
+    k = 0;
+
+    for (j = 1; j < n; j += size) {
+        i = j + 1;
+        for (; i < j + size; i++) {
+            for (k = j; k < i; k ++) {
+                int old_i = i - k; // old i at original matrix
+                int old_k = k; // old k
+                double match_score = (a[old_i - 1] == b[old_k - 1]) ? MATCH : MISMATCH;
+                packed[i * n + k] = max(
+                    packed[(i - 2) * n + k - 1] + match_score,
+                    packed[(i - 1) * n + k - 1] + GAP,
+                    packed[(i - 1) * n + k] + GAP);
             }
-            else {
-                row_open = score_matrix[(row)*(lenB+1)+col-1] + first_A_gap;
-                row_extend = row_cache_score + extend_A;
+        }
+
+        for (; i < j + m; i ++) {
+            // reindex: match_score start at s0 now
+            int old_i_0 = i - j;
+            int old_j_0 = j;
+            for (int id = 1; id < num_SIMD_in_kernel + 1; id ++) {
+                __m256d r0, r1;
+                int indexing0 = (id * 4 - 1);
+                int indexing1 = (id - 1) * 4;
+
+                r0 = _mm256_load_pd(&a[old_i_0 - 1 - indexing0]);
+                r0 = _mm256_permute4x64_pd(r0, 0b00011011);
+                r1 = _mm256_load_pd(&b[old_j_0 - 1 + indexing1]);
+
+                r0 = _mm256_cmp_pd(r0, r1, _CMP_EQ_OQ); 
+                r1 = _mm256_and_pd(r0, MATCH_SCORE);
+                r0 = _mm256_andnot_pd(r0, MISMATCH_SCORE);
+                r0 = _mm256_or_pd(r0, r1);
+
+                r1 = _mm256_loadu_pd(&packed[(i - 2) * n + j - 1 + indexing1]);
+                r1 = _mm256_add_pd(r1, r0);
+                r0 = _mm256_loadu_pd(&packed[(i - 1) * n + j - 1 + indexing1]);
+                r1 = _mm256_max_pd(r0, r1);
+                r0 = _mm256_loadu_pd(&packed[(i - 1) * n + j + indexing1]);
+                r1 = _mm256_max_pd(r0, r1);
+                r1 = _mm256_add_pd(r1, GAP_SCORE);
+
+                _mm256_storeu_pd(&packed[i * n + (j + 0) + indexing1], r1);
             }
-            // row_cache_score = (row_open > row_extend) ? row_open : row_extend;
-            row_cache_score = row_open;
+        }
 
-            if (!penalize_end_gaps_B && col==lenB){
-                col_open = score_matrix[(row-1)*(lenB+1)+col];
-                col_extend = col_cache_score;
-            }
-            else {
-                col_open = score_matrix[(row-1)*(lenB+1)+col] + first_B_gap;
-                col_extend = col_cache_score + extend_B;
-            }
-            // col_cache_score = (col_open > col_extend) ? col_open : col_extend;
-            col_cache_score = col_open;
-
-            best_score = (row_cache_score > col_cache_score) ? row_cache_score : col_cache_score;
-            if(nogap_score > best_score)
-                best_score = nogap_score;
-
-            if (best_score > local_max_score)
-                local_max_score = best_score;
-
-            // if(!align_globally && best_score < 0)
-            //     score_matrix[row*(lenB+1)+col] = 0;
-            // else
-            score_matrix[row*(lenB+1)+col] = best_score;
-
-            if (!score_only) {
-                row_score_rint = rint(row_cache_score);
-                col_score_rint = rint(col_cache_score);
-                row_trace_score = 0;
-                col_trace_score = 0;
-                if (rint(row_open) == row_score_rint)
-                    row_trace_score = row_trace_score|1;
-                if (rint(row_extend) == row_score_rint)
-                    row_trace_score = row_trace_score|8;
-                if (rint(col_open) == col_score_rint)
-                    col_trace_score = col_trace_score|4;
-                if (rint(col_extend) == col_score_rint)
-                    col_trace_score = col_trace_score|16;
-
-                trace_score = 0;
-                best_score_rint = rint(best_score);
-                if (rint(nogap_score) == best_score_rint)
-                    trace_score = trace_score|2;
-                if (row_score_rint == best_score_rint)
-                    trace_score += row_trace_score;
-                if (col_score_rint == best_score_rint)
-                    trace_score += col_trace_score;
-                trace_matrix[row*(lenB+1)+col] = trace_score;
+        i = j + m;
+        for (; i < j + m + size - 1; i ++) {
+            for (k = 1 + i - m; k < j + size; k ++) {
+                int old_i = i - k;
+                int old_k = k;
+                double match_score = (a[old_i - 1] == b[old_k - 1]) ? MATCH : MISMATCH;
+                packed[i * n + k] = max(
+                    packed[(i - 2) * n + k - 1] + match_score,
+                    packed[(i - 1) * n + k - 1] + GAP,
+                    packed[(i - 1) * n + k] + GAP);
             }
         }
     }
 
+
+    /* repack to original matrix */
+
+    for (i = 0; i < m; i ++) {
+        for (j = 0; j < n; j ++) {
+            int packed_i = i + j;
+            score_matrix[i * n + j] = packed[packed_i * n + j];
+        } 
+    }
+
+    free(packed);
+    free(a);
+    free(b);
+
+    best_score = score_matrix[lenA * n + lenB];
+
+    /* Save results */
     FILE *fp;    
-    if( (fp=fopen("./result/base_matrix.txt","w")) == NULL ){
-        printf("Cannot open file base, exit!\n");
+    if( (fp=fopen("./result/kernel_matrix.txt","w")) == NULL ){
+        printf("Cannot open file kernel, exit!\n");
         exit(1);
     }
 
@@ -346,8 +301,8 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
     }
     fclose(fp);
 
-    if (!align_globally)
-        best_score = local_max_score;
+    /* Kernel ends */
+
     /* Save the score and traceback matrices into real python objects. */
 	if(!score_only) {
 		if(!(py_score_matrix = PyList_New(lenA+1)))
@@ -402,8 +357,6 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
         free(score_matrix);
     if(trace_matrix)
         free(trace_matrix);
-    // if(col_cache_score)
-    //     free(col_cache_score);
     if(py_score_matrix){
         Py_DECREF(py_score_matrix);
     }
@@ -441,7 +394,7 @@ static PyObject *cpairwise2_rint(PyObject *self, PyObject *args,
 
 /* Module definition stuff */
 
-static PyMethodDef cpairwise2Methods[] = {
+static PyMethodDef cpairwise2MethodsKernel[] = {
     {"_make_score_matrix_fast",
      (PyCFunction)cpairwise2__make_score_matrix_fast, METH_VARARGS, ""},
     {"rint", (PyCFunction)cpairwise2_rint, METH_VARARGS|METH_KEYWORDS, ""},
@@ -457,10 +410,10 @@ static char cpairwise2__doc__[] =
 
 static struct PyModuleDef moduledef = {
         PyModuleDef_HEAD_INIT,
-        "cpairwise2",
+        "cpairwise2kernel",
         cpairwise2__doc__,
         -1,
-        cpairwise2Methods,
+        cpairwise2MethodsKernel,
         NULL,
         NULL,
         NULL,
@@ -468,13 +421,13 @@ static struct PyModuleDef moduledef = {
 };
 
 PyObject *
-PyInit_cpairwise2(void)
+PyInit_cpairwise2kernel(void)
 
 #else
 
 void
 /* for Windows: _declspec(dllexport) initcpairwise2(void) */
-initcpairwise2(void)
+PyInit_cpairwise2kernel(void)
 #endif
 
 {
@@ -483,6 +436,6 @@ initcpairwise2(void)
     if (module==NULL) return NULL;
     return module;
 #else
-    (void) Py_InitModule3("cpairwise2", cpairwise2Methods, cpairwise2__doc__);
+    (void) Py_InitModule3("cpairwise2kernel", cpairwise2MethodsKernel, cpairwise2__doc__);
 #endif
 }
