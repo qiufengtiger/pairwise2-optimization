@@ -510,9 +510,104 @@ void packed_kernel_32(
 			}
 		}
 	}
+	
+}
 
+void omp_packed_kernel_32(
+	int m,
+	int n,
+	double *restrict a,
+	double *restrict b,
+	double *restrict packed) {
+
+	double match_point[4] = {MATCH - GAP, MATCH - GAP, MATCH - GAP, MATCH - GAP};
+	double mismatch_point[4] = {MISMATCH - GAP, MISMATCH - GAP, MISMATCH - GAP, MISMATCH - GAP};
+	double gap_point[4] = {GAP, GAP, GAP, GAP};
+
+	__m256d MATCH_SCORE = _mm256_load_pd(match_point);
+	__m256d MISMATCH_SCORE = _mm256_load_pd(mismatch_point);
+	__m256d GAP_SCORE = _mm256_load_pd(gap_point);
 
 	
+
+	#pragma omp parallel num_threads(2)
+	{
+		int i = 0;
+		int j = 0;
+		int k = 0;
+		// change kernel size here
+		int size = 32;
+		int num_SIMD_in_kernel = size / 4;
+
+		for (j = 1; j < n; j += size) {
+			i = j + 1;
+			for (; i < j + size; i++) {
+				for (k = j; k < i; k ++) {
+					int old_i = i - k; // old i at original matrix
+					int old_k = k; // old k
+					double match_score = (a[old_i - 1] == b[old_k - 1]) ? MATCH : MISMATCH;
+					packed[i * n + k] = max(
+						packed[(i - 2) * n + k - 1] + match_score,
+						packed[(i - 1) * n + k - 1] + GAP,
+						packed[(i - 1) * n + k] + GAP);
+				}
+			}
+
+			for (; i < j + m; i ++) {
+				// reindex: match_score start at s0 now
+				int old_i_0 = i - j;
+				int old_j_0 = j;
+
+				// int id = 1;
+				
+
+				// kernel size = 16: id from 1 to 4
+				// kernel size = 32: id from 1 to 8
+				#pragma omp for schedule(static, 8)
+				for (int id = 1; id < num_SIMD_in_kernel + 1; id ++) {
+					// __m256d seq_A, seq_B, is_match, match_score, mismatch_score, both_prev, A_prev, B_prev, best_score;
+					// printf("t%d - i%d - j%d - id%d \n", omp_get_thread_num(),i , j, id);
+					
+					__m256d r0, r1;
+					int indexing0 = (id * 4 - 1);
+					int indexing1 = (id - 1) * 4;
+
+					r0 = _mm256_load_pd(&a[old_i_0 - 1 - indexing0]);
+					r0 = _mm256_permute4x64_pd(r0, 0b00011011);
+					r1 = _mm256_load_pd(&b[old_j_0 - 1 + indexing1]);
+
+					r0 = _mm256_cmp_pd(r0, r1, _CMP_EQ_OQ);	
+					r1 = _mm256_and_pd(r0, MATCH_SCORE);
+					r0 = _mm256_andnot_pd(r0, MISMATCH_SCORE);
+					r0 = _mm256_or_pd(r0, r1);
+
+					r1 = _mm256_loadu_pd(&packed[(i - 2) * n + j - 1 + indexing1]);
+					r1 = _mm256_add_pd(r1, r0);
+					r0 = _mm256_loadu_pd(&packed[(i - 1) * n + j - 1 + indexing1]);
+					r1 = _mm256_max_pd(r0, r1);
+					r0 = _mm256_loadu_pd(&packed[(i - 1) * n + j + indexing1]);
+					r1 = _mm256_max_pd(r0, r1);
+					r1 = _mm256_add_pd(r1, GAP_SCORE);
+
+					_mm256_storeu_pd(&packed[i * n + (j + 0) + indexing1], r1);
+				}
+			}
+
+			i = j + m;
+			for (; i < j + m + size - 1; i ++) {
+				for (k = 1 + i - m; k < j + size; k ++) {
+					int old_i = i - k;
+					int old_k = k;
+					double match_score = (a[old_i - 1] == b[old_k - 1]) ? MATCH : MISMATCH;
+					packed[i * n + k] = max(
+						packed[(i - 2) * n + k - 1] + match_score,
+						packed[(i - 1) * n + k - 1] + GAP,
+						packed[(i - 1) * n + k] + GAP);
+				}
+			}
+		}
+	}
+
 }
 
 void repack(int m, int n, double *restrict packed, double *restrict matrix) {

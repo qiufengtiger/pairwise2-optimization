@@ -175,7 +175,7 @@ int main() {
 	init_matrix_packed(m, n, packed);
 	for (int i = 0; i < iteration; i++) {
 		t0 = rdtsc();
-		packed_kernel_4(m, n, a, b, packed);
+		omp_packed_kernel_32(m, n, a, b, packed);
 		t1 = rdtsc();
 		total_time += (t1 - t0);
 	}
@@ -189,7 +189,7 @@ int main() {
 	{
 		correct &= (matrix[i] == matrix_check[i]);
 	}
-	printf("Kernel-4 packed Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
+	printf("Omp kernel-32 packed Result:\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
 	// for(int i = 0; i < m; i ++) {
 	// 	for (int j = 0; j < n; j ++) {
 	// 		printf("%02.0f ", matrix[i * n + j]);

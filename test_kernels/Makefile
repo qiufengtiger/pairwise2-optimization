@@ -6,7 +6,7 @@
 # 	rm -rf *.x *.o *~
 
 CC = gcc
-CFLAGS = -O3 -std=c99 -mavx -mfma -mavx2 -Wall
+CFLAGS = -O3 -std=c99 -mavx -mfma -mavx2 -Wall -fopenmp
 OBJS = naive.o packed_kernels.o nopack_kernels.o
 DEPS = naive.h packed_kernels.h nopack_kernels.h
 
