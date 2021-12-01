@@ -195,12 +195,10 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
         Py_DECREF(py_mismatch);
     }
     /* Cache some commonly used gap penalties */
-    // first_A_gap = calc_affine_penalty(1, open_A, extend_A,
-    //                                   penalize_extend_when_opening);
-    // first_B_gap = calc_affine_penalty(1, open_B, extend_B,
-    //                                   penalize_extend_when_opening);
-    first_A_gap = -1;
-    first_B_gap = -1;
+    first_A_gap = calc_affine_penalty(1, open_A, extend_A,
+                                      penalize_extend_when_opening);
+    first_B_gap = calc_affine_penalty(1, open_B, extend_B,
+                                      penalize_extend_when_opening);
 
     /* Allocate matrices for storing the results and initialize first row and col. */
     lenA = PySequence_Length(py_sequenceA);
