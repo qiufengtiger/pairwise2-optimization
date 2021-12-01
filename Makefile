@@ -11,13 +11,13 @@ cmodule: cpairwise2.c cpairwise2kernel.c
 run:
 	mkdir -p ./result
 	python3 main.py
-	cmp -s ./result/base_matrix.txt ./result/kernel_matrix.txt; \
-    RETVAL=$$?; \
-    if [ $$RETVAL -eq 0 ]; then \
-            echo "SAME"; \
-    else \
-            echo "NOT SAME"; \
-    fi
+	@cmp -s ./result/base_matrix.txt ./result/kernel_matrix.txt; \
+	RETVAL=$$?; \
+	if [ $$RETVAL -eq 0 ]; then \
+			echo "KERNEL RESULT SAME AS THE BASE!"; \
+	else \
+			echo "ERROR, THIS SHOULD NOT HAPPEN!"; \
+	fi
 
 clean:
 	rm -f *.o
