@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <math.h>
 
 #define MATCH 1
@@ -43,7 +44,7 @@ void printMatrix(int m, int n, double *matrix) {
 /* Generate a random dna string  */
 void rand_dna_seq(char *dest, size_t length) {
     char charset[] = "ACGT";
-
+    srand(time(NULL));
     while (length-- > 0) {
         size_t index = (double) rand() / RAND_MAX * (sizeof charset - 1);
         *dest++ = charset[index];
