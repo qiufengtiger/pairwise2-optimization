@@ -335,13 +335,27 @@ static PyObject *cpairwise2__make_score_matrix_fast(PyObject *self,
         }
     }
 
+    // for (col=0; col <= lenB; col ++) {
+    //     for (row = 0; row <= lenA; row ++) {
+    //         printf("%d ", (int)score_matrix[row * (lenB + 1) + col]);
+    //     }
+    //     printf("\n");
+    // }
+    // printf("\n");
+
+    FILE *fp;    
+    if( (fp=fopen("../base_res.txt","w")) == NULL ){
+        printf("Cannot open file, press any key to exit!\n");
+        exit(1);
+    }
+
     for (col=0; col <= lenB; col ++) {
         for (row = 0; row <= lenA; row ++) {
-            printf("%d ", (int)score_matrix[row * (lenB + 1) + col]);
+            fprintf(fp,"%d ",(int)score_matrix[row * (lenB + 1) + col]); 
         }
-        printf("\n");
+        fprintf(fp,"\n");
     }
-    printf("\n");
+    fclose(fp);
 
     if (!align_globally)
         best_score = local_max_score;
