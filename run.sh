@@ -1,6 +1,6 @@
 gcc -c generate.c -o generate.o
 gcc generate.o -o generate
-./generate 32 32
+./generate 512 512
 rm generate
 rm generate.o
 cd test_kernels

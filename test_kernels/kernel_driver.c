@@ -151,12 +151,12 @@ int main() {
 
 	
 	init_matrix(m, n, matrix);
-	for (int i = 0; i < iteration; i++) {
-		t0 = rdtsc();
+	// for (int i = 0; i < iteration; i++) {
+	// 	t0 = rdtsc();
 		noSIMD_nopack_kernel_4(m, n, a, b, matrix);
-		t1 = rdtsc();
-		total_time += (t1 - t0);
-	}
+	// 	t1 = rdtsc();
+	// 	total_time += (t1 - t0);
+	// }
 	
 	// printf("Kernel Result:\n");
 	// printMatrix(m, n, matrix);
@@ -169,11 +169,13 @@ int main() {
 	/************************************* Kernel packed **************************************************/
 	correct = 1;
 	total_time = 0;
-	set_zeros(m, n, matrix);
-	
+	// set_zeros(m, n, packed);
 
-	init_matrix_packed(m, n, packed);
+	// init_matrix_packed(m, n, packed);
+
 	for (int i = 0; i < iteration; i++) {
+		set_zeros(2 * m - 1, n, packed);
+		init_matrix_packed(m, n, packed);
 		t0 = rdtsc();
 		omp_packed_kernel_32(m, n, a, b, packed);
 		t1 = rdtsc();

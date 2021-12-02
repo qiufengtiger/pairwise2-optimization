@@ -530,7 +530,7 @@ void omp_packed_kernel_32(
 
 	
 
-	#pragma omp parallel num_threads(2)
+	#pragma omp parallel num_threads(16)
 	{
 		int i = 0;
 		int j = 0;
@@ -539,7 +539,10 @@ void omp_packed_kernel_32(
 		int size = 32;
 		int num_SIMD_in_kernel = size / 4;
 
-		for (j = 1; j < n; j += size) {
+		// #pragma omp for 
+		for (j = 1; j < n; j += size) { 
+			// int myid = omp_get_thread_num();
+			// printf("My id is %d, loop j is %d\n", myid, j);
 			i = j + 1;
 			for (; i < j + size; i++) {
 				for (k = j; k < i; k ++) {
@@ -563,7 +566,7 @@ void omp_packed_kernel_32(
 
 				// kernel size = 16: id from 1 to 4
 				// kernel size = 32: id from 1 to 8
-				#pragma omp for schedule(static, 8)
+				#pragma omp parallel for schedule(static, 8) num_threads(2)
 				for (int id = 1; id < num_SIMD_in_kernel + 1; id ++) {
 					// __m256d seq_A, seq_B, is_match, match_score, mismatch_score, both_prev, A_prev, B_prev, best_score;
 					// printf("t%d - i%d - j%d - id%d \n", omp_get_thread_num(),i , j, id);
