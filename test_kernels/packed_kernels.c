@@ -530,7 +530,7 @@ void omp_packed_kernel_32(
 
 	
 
-	#pragma omp parallel num_threads(16)
+	#pragma omp parallel num_threads(8)
 	{
 		int i = 0;
 		int j = 0;
@@ -566,7 +566,7 @@ void omp_packed_kernel_32(
 
 				// kernel size = 16: id from 1 to 4
 				// kernel size = 32: id from 1 to 8
-				#pragma omp parallel for schedule(static, 8) num_threads(2)
+				#pragma omp for 
 				for (int id = 1; id < num_SIMD_in_kernel + 1; id ++) {
 					// __m256d seq_A, seq_B, is_match, match_score, mismatch_score, both_prev, A_prev, B_prev, best_score;
 					// printf("t%d - i%d - j%d - id%d \n", omp_get_thread_num(),i , j, id);
@@ -640,4 +640,9 @@ void init_matrix_packed(int m, int n, double *packed) {
 	for (i = 0; i < m; i ++) {
 		packed[i * n] = GAP * i;
 	}
+}
+
+
+void SMID_packed_init_kernel_64(int m, int n, double *packed) {
+	
 }

@@ -135,6 +135,7 @@ int main() {
 	// printf("Naive Result:\n");
 	// printMatrix(m, n, matrix_check);
 	printf("Naive Result:\t\t\tm = %d,\t n = %d,\t time = %lf\n", m, n, ((double)(total_time) / iteration));
+	printf("Naive Result:\t\t\tm = %d,\t n = %d,\t performance = %lf\n", m, n, 6*(m-1)*(n-1)/((double)(total_time) / iteration));
 
 	// for(int i = 0; i < m; i ++) {
 	// 	for (int j = 0; j < n; j ++) {
@@ -151,12 +152,12 @@ int main() {
 
 	
 	init_matrix(m, n, matrix);
-	// for (int i = 0; i < iteration; i++) {
-	// 	t0 = rdtsc();
+	for (int i = 0; i < iteration; i++) {
+		t0 = rdtsc();
 		noSIMD_nopack_kernel_4(m, n, a, b, matrix);
-	// 	t1 = rdtsc();
-	// 	total_time += (t1 - t0);
-	// }
+		t1 = rdtsc();
+		total_time += (t1 - t0);
+	}
 	
 	// printf("Kernel Result:\n");
 	// printMatrix(m, n, matrix);
@@ -166,6 +167,8 @@ int main() {
 		correct &= (matrix[i] == matrix_check[i]);
 	}
 	printf("Non-SIMD Kernel-4 Result:\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
+	printf("Non-SIMD Kernel-4 Result:\tm = %d,\t n = %d,\t performance = %lf\n", m, n, 6*(m-1)*(n-1)/((double)(total_time) / iteration));
+
 	/************************************* Kernel packed **************************************************/
 	correct = 1;
 	total_time = 0;
@@ -174,7 +177,7 @@ int main() {
 	// init_matrix_packed(m, n, packed);
 
 	for (int i = 0; i < iteration; i++) {
-		set_zeros(2 * m - 1, n, packed);
+		// set_zeros(2 * m - 1, n, packed);
 		init_matrix_packed(m, n, packed);
 		t0 = rdtsc();
 		omp_packed_kernel_32(m, n, a, b, packed);
@@ -192,6 +195,8 @@ int main() {
 		correct &= (matrix[i] == matrix_check[i]);
 	}
 	printf("Omp kernel-32 packed Result:\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
+	printf("Omp kernel-32 packed Result:\tm = %d,\t n = %d,\t performance = %lf\n", m, n, 6*(m-1)*(n-1)/((double)(total_time) / iteration));
+	
 	// for(int i = 0; i < m; i ++) {
 	// 	for (int j = 0; j < n; j ++) {
 	// 		printf("%02.0f ", matrix[i * n + j]);
@@ -229,6 +234,8 @@ int main() {
 		correct &= (matrix[i] == matrix_check[i]);
 	}
 	printf("SIMD Kernel-4 Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
+	printf("SIMD Kernel-4 Result:\t\tm = %d,\t n = %d,\t performance = %lf\n", m, n, 6*(m-1)*(n-1)/((double)(total_time) / iteration));
+
 	/************************************* SIMD Kernel 8 **************************************************/
 	correct = 1;
 	total_time = 0;
@@ -251,45 +258,51 @@ int main() {
 		correct &= (matrix[i] == matrix_check[i]);
 	}
 	printf("SIMD Kernel-8 Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
+	printf("SIMD Kernel-8 Result:\t\tm = %d,\t n = %d,\t performance = %lf\n", m, n, 6*(m-1)*(n-1)/((double)(total_time) / iteration));
+
 	/************************************* SIMD Kernel 16 **************************************************/
-	// correct = 1;
-	// total_time = 0;
+	correct = 1;
+	total_time = 0;
 
-	// init_matrix(m, n, matrix);
-	// for (int i = 0; i < iteration; i++) {
-	// 	t0 = rdtsc();
-	// 	SIMDkernel16(m, n, a, b, matrix);
-	// 	t1 = rdtsc();
-	// 	total_time += (t1 - t0);
-	// }
+	init_matrix(m, n, matrix);
+	for (int i = 0; i < iteration; i++) {
+		t0 = rdtsc();
+		nopack_kernel_16(m, n, a, b, matrix);
+		t1 = rdtsc();
+		total_time += (t1 - t0);
+	}
 
-	// // printf("SIMD Kernel-16 Result:\n");
-	// // printMatrix(m, n, matrix);
-	// for (int i = 0; i < (m) * (n); i++)
-	// {
-	// 	correct &= (matrix[i] == matrix_check[i]);
-	// }
-	// printf("SIMD Kernel-16 Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
+	// printf("SIMD Kernel-16 Result:\n");
+	// printMatrix(m, n, matrix);
+	for (int i = 0; i < (m) * (n); i++)
+	{
+		correct &= (matrix[i] == matrix_check[i]);
+	}
+	printf("SIMD Kernel-16 Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
+	printf("SIMD Kernel-16 Result:\t\tm = %d,\t n = %d,\t performance = %lf\n", m, n, 6*(m-1)*(n-1)/((double)(total_time) / iteration));
+	
 	/************************************* SIMD Kernel 32 **************************************************/
-	// correct = 1;
-	// total_time = 0;
+	correct = 1;
+	total_time = 0;
 
-	// init_matrix(m, n, matrix);
-	// for (int i = 0; i < iteration; i++) {
-	// 	t0 = rdtsc();
-	// 	SIMDkernel32(m, n, a, b, matrix);
-	// 	t1 = rdtsc();
-	// 	total_time += (t1 - t0);
-	// }
+	init_matrix(m, n, matrix);
+	for (int i = 0; i < iteration; i++) {
+		t0 = rdtsc();
+		nopack_kernel_32(m, n, a, b, matrix);
+		t1 = rdtsc();
+		total_time += (t1 - t0);
+	}
 
-	// // printf("SIMD Kernel-32 Result:\n");
-	// // printMatrix(m, n, matrix);
-	// correct = 1;
-	// for (int i = 0; i < (m) * (n); i++)
-	// {
-	// 	correct &= (matrix[i] == matrix_check[i]);
-	// }
-	// printf("SIMD Kernel-32 Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
+	// printf("SIMD Kernel-32 Result:\n");
+	// printMatrix(m, n, matrix);
+	correct = 1;
+	for (int i = 0; i < (m) * (n); i++)
+	{
+		correct &= (matrix[i] == matrix_check[i]);
+	}
+	printf("SIMD Kernel-32 Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
+	printf("SIMD Kernel-32 Result:\t\tm = %d,\t n = %d,\t performance = %lf\n", m, n, 6*(m-1)*(n-1)/((double)(total_time) / iteration));
+
 	/***********************************************************************************************/
 
 	free(a);
