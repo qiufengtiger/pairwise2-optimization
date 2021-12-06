@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
 
 	unsigned long long t0, t1;
 
-	int iteration = 10;
+	int iteration = 100;
 
 	//m is the number of rows of C
 	//n is the number of columns of C
