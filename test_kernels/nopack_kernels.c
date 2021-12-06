@@ -76,7 +76,7 @@ void nopack_kernel_4(
 
 	__m256d seq_A, seq_B, is_match, match_score, mismatch_score, top_left, score1, left, best_score, top;
 	// __m256d r1, r2;
-	for (int i = 1; i < m; i += size)
+	for (int i = 1; i < n; i += size)
 	{
 		int j = 1;
 		for (; j < size; j++)
@@ -164,7 +164,7 @@ void nopack_kernel_8(
 	int row0, row1, row2, row3, row4, row5, row6, row7;
 	int col0, col1, col2, col3, col4, col5, col6, col7;
 
-	for (int i = 1; i < m; i += size)
+	for (int i = 1; i < n; i += size)
 	{
 		int j = 1;
 		for (; j < size; j++)
@@ -273,7 +273,7 @@ void nopack_kernel_16(
 	int row0, row1, row2, row3, row4, row5, row6, row7, row8, row9, row10, row11, row12, row13, row14, row15;
 	int col0, col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11, col12, col13, col14, col15;
 
-	for (int i = 1; i < m; i += size)
+	for (int i = 1; i < n; i += size)
 	{
 		int j = 1;
 		for (; j < size; j++)
@@ -431,7 +431,7 @@ void nopack_kernel_32(
 	int col0, col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11, col12, col13, col14, col15;
 	int col16, col17, col18, col19, col20, col21, col22, col23, col24, col25, col26, col27, col28, col29, col30, col31;
 
-	for (int i = 1; i < m; i += size)
+	for (int i = 1; i < n; i += size)
 	{
 		int j = 1;
 		for (; j < size; j++)
