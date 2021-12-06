@@ -1,4 +1,8 @@
-# Parallelizing and optimizing global pairwise alignment algorithms
+# Parallelizing and optimizing global pairwise alignment algorithm
+
+## Platform
+Most of the testing and evaluation are performed on the cmu.ece009 machine. But any ece clusters with Broadwell archetecture should yeild similar results. 
+
 ## Project Structure
 - pairwise2: this folder contains the baseline code for pairwise2 algorithm. And the pairwise2 code after integrating our kernel into the baseline. By running these two versions of code, we check the correctness of the kernel.
 -- cpairwise2.c: the fast module used to calcuate score matrix for pairwise2 
@@ -15,6 +19,8 @@
 -- nopack_kernels.h, nopack_kernels.c: SIMD kernels without packing in different size
 -- packed_kernels.h, packed_kernels.c: SIMD kernels with packing in different size
 -- Makefile
+
+- test_kernels_init: similar to test_kernels but testing the initialization step. Since we don't see any improved performance using SIMD and OpenMP, we keep the naive implement for initialization step. 
 
 - test_correctness.sh: shell script to check kernel correctness
 - test_performance.sh: shell script to check kernel performance
