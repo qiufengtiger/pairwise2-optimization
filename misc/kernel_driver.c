@@ -1135,25 +1135,25 @@ int main() {
 	}
 	printf("SIMD Kernel-4 Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
 	/************************************* SIMD Kernel 8 **************************************************/
-	correct = 1;
-	total_time = 0;
-	set_zeros(m, n, matrix);
+	// correct = 1;
+	// total_time = 0;
+	// set_zeros(m, n, matrix);
 
-	init_matrix(m, n, matrix);
-	for (int i = 0; i < iteration; i++) {
-		t0 = rdtsc();
-		SIMDkernel8(m, n, a, b, matrix);
-		t1 = rdtsc();
-		total_time += (t1 - t0);
-	}
+	// init_matrix(m, n, matrix);
+	// for (int i = 0; i < iteration; i++) {
+	// 	t0 = rdtsc();
+	// 	SIMDkernel8(m, n, a, b, matrix);
+	// 	t1 = rdtsc();
+	// 	total_time += (t1 - t0);
+	// }
 
-	// printf("SIMD Kernel-8 Result:\n");
-	// printMatrix(m, n, matrix);
-	for (int i = 0; i < (m) * (n); i++)
-	{
-		correct &= (matrix[i] == matrix_check[i]);
-	}
-	printf("SIMD Kernel-8 Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
+	// // printf("SIMD Kernel-8 Result:\n");
+	// // printMatrix(m, n, matrix);
+	// for (int i = 0; i < (m) * (n); i++)
+	// {
+	// 	correct &= (matrix[i] == matrix_check[i]);
+	// }
+	// printf("SIMD Kernel-8 Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
 	/************************************* SIMD Kernel 16 **************************************************/
 	// correct = 1;
 	// total_time = 0;
