@@ -34,9 +34,18 @@ void save_matrix(int m, int n, double *matrix) {
 	fclose(fp);
 }
 
+/* Generate a random dna string  */
+void rand_dna_seq(char *dest, size_t length) {
+    char charset[] = "ACGT";
 
+    while (length-- > 0) {
+        size_t index = (double) rand() / RAND_MAX * (sizeof charset - 1);
+        *dest++ = charset[index];
+    }
+    *dest = '\0';
+}
 
-int main() {
+int main(int argc, char *argv[]) {
 	double *a;
 	double *b;
 	double *matrix, *matrix_check, *packed;
@@ -44,43 +53,20 @@ int main() {
 	unsigned long long t0, t1;
 
 	int iteration = 10;
-	int m; //m is the number of rows of C
-	int n; //n is the number of columns of C
-	// char str1[] = "GATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACATGATTACAT";
-	// char str2[] = "GCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACATGCATGCUTGATTACATGATTACATGATTACAT";
 
-    FILE *fp;    
-    if( (fp=fopen("../seq.txt","rt")) == NULL ){
-        printf("Cannot open file, press any key to exit!\n");
-        exit(1);
-    }
-
-	fscanf(fp,"%d ",&m); 
-    fscanf(fp,"%d\n",&n);
+	//m is the number of rows of C
+	//n is the number of columns of C
+	int m = atoi(argv[1]) + 1, n = atoi(argv[2]) + 1;
     printf("m = %d, n = %d\n", m, n);
 
 	// make random dna sequences
 	char str1[m + 1];   // including a \0 character
 	char str2[n + 1];
+	rand_dna_seq(str1, m);
+    rand_dna_seq(str2, n);
 
-	fgets(str1, m+1, fp);  
-	fgets(str2, n+1, fp);
-	printf("Sequence1: %s\n", str1);
-	printf("Sequence2: %s\n", str2);
-	fclose(fp);
-
-	// rand_dna_seq(str1, sizeof str1 - 1);
-	// rand_dna_seq(str2, sizeof str2 - 1);
-
-	// printf("%s\n", str1);
-	// printf("%s\n", str2);
-
-
-
-	// int m = 9; //m is the number of rows of C
-	// int n = 9; //n is the number of columns of C
-	// char str1[] = "GATTACAT";
-	// char str2[] = "GCATGCUT";
+	// printf("Sequence1: %s\n", str1);
+	// printf("Sequence2: %s\n", str2);
 
 
 	/*
