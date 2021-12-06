@@ -12,7 +12,7 @@ DEPS = naive.h packed_kernels.h nopack_kernels.h
 
 
 all: test_kernels.x
-	./test_kernels.x
+	./test_kernels.x 16384 32
 
 test_kernels.x: $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(DEPS) kernel_driver.c -o test_kernels.x
