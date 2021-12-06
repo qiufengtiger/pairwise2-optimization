@@ -38,3 +38,11 @@ void nopack_kernel_32(
 	double *restrict matrix);
 
 
+
+void nopack_kernel_64(
+	int m,
+	int n,
+	double *restrict a,
+	double *restrict b,
+	double *restrict matrix);
+
