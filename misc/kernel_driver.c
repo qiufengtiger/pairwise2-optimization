@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <omp.h>
+// #include <omp.h>
 #include <time.h>
 
 #include "immintrin.h"
@@ -35,7 +35,8 @@ void kernel(
 	int i = 0;
 	int j = 0;
 	int k = 0;
-	int size = 4;
+	int size = 8;
+	int num_SIMD_in_kernel = size / 4;
 
 	for (j = 1; j < n; j += size) {
 		i = 1;
@@ -47,19 +48,23 @@ void kernel(
 			}
 		}
 		for (; i < m; i++) {
-			int row1 = i, col1 = j;
-			int row2 = i - 1, col2 = j + 1;
-			int row3 = i - 2, col3 = j + 2;
-			int row4 = i - 3, col4 = j + 3;
-			double s1 = a[row1 - 1] == b[col1 - 1] ? MATCH : MISMATCH;
-			double s2 = a[row2 - 1] == b[col2 - 1] ? MATCH : MISMATCH;
-			double s3 = a[row3 - 1] == b[col3 - 1] ? MATCH : MISMATCH;
-			double s4 = a[row4 - 1] == b[col4 - 1] ? MATCH : MISMATCH;
+			for (int id = 0; id < num_SIMD_in_kernel; id ++) {
+				int start = id * 4;
+				int row1 = i - start, col1 = j + start;
+				int row2 = i - start - 1, col2 = j + start + 1;
+				int row3 = i - start - 2, col3 = j + start + 2;
+				int row4 = i - start - 3, col4 = j + start + 3;
+				double s1 = a[row1 - 1] == b[col1 - 1] ? MATCH : MISMATCH;
+				double s2 = a[row2 - 1] == b[col2 - 1] ? MATCH : MISMATCH;
+				double s3 = a[row3 - 1] == b[col3 - 1] ? MATCH : MISMATCH;
+				double s4 = a[row4 - 1] == b[col4 - 1] ? MATCH : MISMATCH;
 
-			matrix[row1 * n + col1] = max(matrix[(row1 - 1) * n + col1 - 1] + s1, matrix[(row1 - 1) * n + col1] + GAP, matrix[row1 * n + col1 - 1] + GAP);
-			matrix[row2 * n + col2] = max(matrix[(row2 - 1) * n + col2 - 1] + s2, matrix[(row2 - 1) * n + col2] + GAP, matrix[row2 * n + col2 - 1] + GAP);
-			matrix[row3 * n + col3] = max(matrix[(row3 - 1) * n + col3 - 1] + s3, matrix[(row3 - 1) * n + col3] + GAP, matrix[row3 * n + col3 - 1] + GAP);
-			matrix[row4 * n + col4] = max(matrix[(row4 - 1) * n + col4 - 1] + s4, matrix[(row4 - 1) * n + col4] + GAP, matrix[row4 * n + col4 - 1] + GAP);
+				matrix[row1 * n + col1] = max(matrix[(row1 - 1) * n + col1 - 1] + s1, matrix[(row1 - 1) * n + col1] + GAP, matrix[row1 * n + col1 - 1] + GAP);
+				matrix[row2 * n + col2] = max(matrix[(row2 - 1) * n + col2 - 1] + s2, matrix[(row2 - 1) * n + col2] + GAP, matrix[row2 * n + col2 - 1] + GAP);
+				matrix[row3 * n + col3] = max(matrix[(row3 - 1) * n + col3 - 1] + s3, matrix[(row3 - 1) * n + col3] + GAP, matrix[row3 * n + col3 - 1] + GAP);
+				matrix[row4 * n + col4] = max(matrix[(row4 - 1) * n + col4 - 1] + s4, matrix[(row4 - 1) * n + col4] + GAP, matrix[row4 * n + col4 - 1] + GAP);
+			}
+			
 		}
 		i = m - size + 1;
 		for (; i < m; i++) {
