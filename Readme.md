@@ -26,10 +26,11 @@ Most of the testing and evaluation are performed on the cmu.ece009 machine. But 
 - test_performance.sh: shell script to check kernel performance
 
 ## How to test
-To test the correctness of kernel, run command `./test_correctness.sh` in root folder.
+This code can run on any machine on ECE cluster.
+To test the correctness of kernel, run command `./test_correctness.sh` in top-level folder.
 This command will run the baseline code and kernel code separately, and store the result in ./result. 
 If result from kernel is identical with result from baseline, you will see 'KERNEL RESULT SAME AS THE BASE!'.
 
-To test the performance of kernels, run command `./test_performance.sh` in root folder.
+To test the performance of kernels, run command `./test_performance.sh` in top-level folder.
 This command will run different kernels and test the performance.
 To change the length of sequence, modify the length parameters in line 15 in `./test_kernels/Makefile`
