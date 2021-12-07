@@ -425,10 +425,10 @@ int main(int argc, char *argv[]) {
 	repack(m, n, packed, matrix);
 
 
-	for (int i = 0; i < (m) * (n); i++)
-	{
-		correct &= (matrix[i] == matrix_check[i]);
-	}
+	// for (int i = 0; i < (m) * (n); i++)
+	// {
+	// 	correct &= (matrix[i] == matrix_check[i]);
+	// }
 	//printf("kernel-4 packed Result:\t\tm = %d,\t n = %d,\t time = %lf\t, correct = %d\n", m, n, ((double)(total_time) / iteration), correct);
 	printf("kernel-64 packed Result:\tm = %d,\t n = %d,\t performance = %lf\t, correct = %d\n", m, n, 6*(m-1)*(n-1)/((double)(total_time) / iteration),correct);
 
